@@ -24,10 +24,10 @@ It implements a recursive method in which the $n+1$-th cumulant is computed usin
 
 
 ### Main function
-- `fcscumulants_recursive(L, mJ, nC, rho_ss; ...)` – compute FCS cumulants up to order `nC`, taking as input 
+- `fcscumulants_recursive(L, mJ, nC, rho_ss, nu)` – compute FCS cumulants up to order `nC`, taking as input 
 a (vectorised) Liouvillian, `L`, the steady-state `rho_ss`, a vector of monitored jumps `mJ`, and a vector `nu` to attribute sign 
 and unitful weighs to the monitored jumps.
-- `fcscumulants_recursive(H,J, mJ, nC, rho_ss; ...)` – Method for quantum optics---you can pass, instead of the Liouvillian,
+- `fcscumulants_recursive(H,J, mJ, nC, rho_ss, nu)` – Method for quantum optics---you can pass, instead of the Liouvillian,
 the Hamiltonian and the vector of all jump operators.
 
 *(See the [API docs](https://marcelojbp.github.io/QuantumFCS) for the full list.)*

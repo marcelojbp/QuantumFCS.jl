@@ -5,7 +5,8 @@ This package provides tools to compute full-counting-statistics cumulants from a
 ## Installation
 To install the package, in the Julia REPL, 
 ```julia
-] add https://github.com/marcelojbp/QuantumFCS
+using Pkg 
+Pkg.add("QuantumFCS")
 ```
 
 ## Quickstart example

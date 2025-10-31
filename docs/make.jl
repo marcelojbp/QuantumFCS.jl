@@ -25,6 +25,6 @@ makedocs(
 )
 
 deploydocs(
-    repo      = "github.com/marcelojbp/QuantumFCS",
+    repo      = "github.com/marcelojbp/QuantumFCS.jl",
     devbranch = "main",
 )

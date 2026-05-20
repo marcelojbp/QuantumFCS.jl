@@ -67,3 +67,4 @@ For the future,
 - Time-dependent systems
 - Computing the FCS distribution numerically
 - Integration with other frameworks, such as `QuantumToolbox.jl`
+- Factorial moments 

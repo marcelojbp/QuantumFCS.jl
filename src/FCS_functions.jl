@@ -35,8 +35,28 @@ function factorial_cumulants(cumulants::AbstractVector{<:Number})
 end
 
 """
-    fcscumulants_recursive(L, mJ, nC, rho_ss, nu)
-    fcscumulants_recursive(H, J, mJ, nC, rho_ss, nu)
+    _postprocess_cumulants(cumulants, cumulant_type)
+
+Internal helper used by `fcscumulants_recursive` to apply the requested output
+type after the ordinary cumulants have been computed.
+
+Use `cumulant_type == ""` to return `cumulants` unchanged, or
+`cumulant_type == "factorial"` to convert them with [`factorial_cumulants`](@ref).
+Unsupported values throw an `ArgumentError` with the accepted options.
+"""
+function _postprocess_cumulants(cumulants, cumulant_type::AbstractString)
+    if cumulant_type == ""
+        return cumulants
+    elseif cumulant_type == "factorial"
+        return factorial_cumulants(cumulants)
+    else
+        throw(ArgumentError("Unsupported cumulant_type=$(repr(cumulant_type)). Use \"\" or \"factorial\"."))
+    end
+end
+
+"""
+    fcscumulants_recursive(L, mJ, nC, rho_ss, nu; cumulant_type="")
+    fcscumulants_recursive(H, J, mJ, nC, rho_ss, nu; cumulant_type="")
 
 Calculate n-th zero-frequency cumulant of full counting statistics using a recursive scheme.
 
@@ -49,13 +69,17 @@ Alternatively, one can provide the Hamiltonian and jump operators instead of `L`
 * `nC`: Number of cumulants to be calculated.
 * `rho_ss`: Steady-state density matrix (sparse or dense, ComplexF64)
 * `nu`: Vector of length `length(mJ)` with weights for each jump.
+* `cumulant_type`: Optional keyword. Use `""` for ordinary cumulants, or
+  `"factorial"` to return factorial cumulants obtained by post-processing the
+  ordinary cumulants with [`factorial_cumulants`](@ref).
 """
 function fcscumulants_recursive(
     L::SparseMatrixCSC{ComplexF64, Int},
     mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64, Int}},
     nC::Integer,
     rho_ss::SparseMatrixCSC{ComplexF64, Int},
-    nu::AbstractVector{<:Real},
+    nu::AbstractVector{<:Real};
+    cumulant_type::AbstractString = "",
 )
     if length(mJ) != length(nu)
         throw(ArgumentError("Length of mJ ($(length(mJ))) must match length of nu ($(length(nu)))."))
@@ -132,7 +156,7 @@ function fcscumulants_recursive(
         vI[ncur] = acc
     end
 
-    return vI
+    return _postprocess_cumulants(vI, cumulant_type)
 end
 # Dense method
 function fcscumulants_recursive(
@@ -140,7 +164,8 @@ function fcscumulants_recursive(
     mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64,Int}},
     nC::Integer,
     rho_ss::Union{SparseMatrixCSC{ComplexF64,Int}, Matrix{ComplexF64}},
-    nu::AbstractVector{<:Real},
+    nu::AbstractVector{<:Real};
+    cumulant_type::AbstractString = "",
 )
     # Dimensions
     n = size(rho_ss, 1)
@@ -214,7 +239,7 @@ function fcscumulants_recursive(
         vI[ncur] = acc
     end
 
-    return vI
+    return _postprocess_cumulants(vI, cumulant_type)
 end
 
 """

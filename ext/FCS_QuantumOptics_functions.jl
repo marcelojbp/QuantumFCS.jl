@@ -4,10 +4,18 @@ function QuantumFCS.fcscumulants_recursive(
     mJ::AbstractVector{<:Operator},
     nC::Integer,
     rho_ss::AbstractOperator,
-    nu::AbstractVector{<:Real},
+    nu::AbstractVector{<:Real};
+    cumulant_type::AbstractString = "",
     )
     L = liouvillian(H, J).data
-    return QuantumFCS.fcscumulants_recursive(L, getfield.(mJ, :data), nC, sparse(rho_ss.data), nu)
+    return QuantumFCS.fcscumulants_recursive(
+        L,
+        getfield.(mJ, :data),
+        nC,
+        sparse(rho_ss.data),
+        nu;
+        cumulant_type = cumulant_type,
+    )
 end
 
 # Single convenience wrapper (H,J,...). Placed once to avoid method redefinition during precompilation.

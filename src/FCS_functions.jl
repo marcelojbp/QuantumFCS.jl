@@ -1,4 +1,40 @@
 """
+    factorial_cumulants(cumulants::AbstractVector{<:Number})
+
+Convert ordinary cumulants `[c1, c2, ..., cn]` to factorial cumulants
+`[f1, f2, ..., fn]`.
+
+The conversion uses the signed Stirling numbers of the first kind,
+
+```
+f_m = sum(s(m, j) * c_j for j in 1:m)
+```
+
+with `s(1, 1) = 1` and the recurrence
+`s(m, j) = s(m - 1, j - 1) - (m - 1) * s(m - 1, j)`.
+
+The physical factorial-cumulant interpretation assumes dimensionless count
+cumulants. Dimensionful heat-current cumulants should be rescaled first.
+"""
+function factorial_cumulants(cumulants::AbstractVector{<:Number})
+    n = length(cumulants)
+    n == 0 && return Number[]
+
+    stirling = zeros(Int, n, n)
+    stirling[1, 1] = 1
+
+    for m = 2:n
+        for j = 1:m
+            previous_diagonal = j == 1 ? 0 : stirling[m - 1, j - 1]
+            previous_column = j == m ? 0 : stirling[m - 1, j]
+            stirling[m, j] = previous_diagonal - (m - 1) * previous_column
+        end
+    end
+
+    return [sum(stirling[m, j] * cumulants[j] for j = 1:m) for m = 1:n]
+end
+
+"""
     fcscumulants_recursive(L, mJ, nC, rho_ss, nu)
     fcscumulants_recursive(H, J, mJ, nC, rho_ss, nu)
 
@@ -371,5 +407,3 @@ function drazin_apply(L::Matrix{ComplexF64},
 
     return y  # Vector{ComplexF64}
 end
-
-

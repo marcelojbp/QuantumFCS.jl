@@ -10,6 +10,17 @@ function QuantumFCS.fcscumulants_recursive(
     return QuantumFCS.fcscumulants_recursive(L, getfield.(mJ, :data), nC, sparse(rho_ss.data), nu)
 end
 
+# --- FCSProblem backend hooks (QuantumOptics) ---
+QuantumFCS._operator_data(x::AbstractOperator) = x.data
+QuantumFCS._state_data(x::AbstractOperator) = sparse(x.data)
+QuantumFCS._build_liouvillian(H::Operator, J) = liouvillian(H, J).data
+
+# Convenience constructor: build a problem from H and J, deferring L to solve time.
+function QuantumFCS.LindbladFCS(H::Operator, J::AbstractVector{<:Operator};
+                                mJ, rho_ss, nu, nC::Integer = 2)
+    return QuantumFCS.LindbladFCS(; H = H, J = J, mJ = mJ, rho_ss = rho_ss, nu = nu, nC = nC)
+end
+
 # Single convenience wrapper (H,J,...). Placed once to avoid method redefinition during precompilation.
 function QuantumFCS.drazin(H::Operator, J, vrho_ss::AbstractVector, vId::AbstractVecOrMat, IdL::AbstractMatrix)
     L = liouvillian(H, J).data

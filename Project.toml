@@ -11,16 +11,20 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 #optional dependency
 [weakdeps]
 QuantumOptics = "6e0679c1-51ea-5a7c-ac74-d61b76210b0c"
+QuantumToolbox = "6c2fb7c5-b903-41d2-bc5e-5a7c320b9fab"
 
 [extensions]
-QuantumFCSQuantumOpticsExt = ["QuantumOptics"]   # loads if QuantumOptics is present
+QuantumFCSQuantumOpticsExt = ["QuantumOptics"]    # loads if QuantumOptics is present
+QuantumFCSQuantumToolboxExt = ["QuantumToolbox"]  # loads if QuantumToolbox is present
 
 [compat]
-julia = "1.9, 1.10, 1.11"
+julia = "1.10, 1.11, 1.12"
+QuantumToolbox = "0.28"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 QuantumOptics = "6e0679c1-51ea-5a7c-ac74-d61b76210b0c"
+QuantumToolbox = "6c2fb7c5-b903-41d2-bc5e-5a7c320b9fab"
 
 [targets]
-test = ["Test", "QuantumOptics"]
+test = ["Test", "QuantumOptics", "QuantumToolbox"]

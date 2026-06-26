@@ -1,10 +1,11 @@
 # Backend bindings for QuantumToolbox.jl.
 #
-# QuantumToolbox represents every quantum object as a `QuantumObject{ObjType,...}`
-# where `ObjType` (e.g. `Operator`, `SuperOperator`) is a *type tag* stored in the
-# first type parameter, not the concrete struct. We therefore dispatch on
-# `QuantumObject{<:Operator}` and peel the backing array off the `.data` field,
-# exactly mirroring the QuantumOptics backend.
+# QuantumToolbox represents every quantum object as a `QuantumObject`, with the
+# object kind (operator, ket, super-operator, ...) stored as a *singleton value*
+# in a type parameter — e.g. `Operator === OperatorQuantumObject()` is a value,
+# not a type, so `QuantumObject{<:Operator}` is invalid. We therefore dispatch on
+# `QuantumObject` directly and peel the backing array off the `.data` field,
+# mirroring the QuantumOptics backend.
 #
 # Vectorization convention matches the core engine and QuantumOptics:
 # `mat2vec == vec` (column-major), `spre(A) = kron(I, A)`, `spost(B) = kron(transpose(B), I)`,
@@ -13,12 +14,13 @@
 # Coerce any operator backing array into the sparse ComplexF64 form the core expects.
 _qt_sp(A::AbstractArray) = SparseMatrixCSC{ComplexF64, Int}(sparse(A))
 
+# --- Positional (H, J, mJ, nC, rho_ss, nu) API, mirroring the QuantumOptics backend ---
 function QuantumFCS.fcscumulants_recursive(
-    H::QuantumObject{<:Operator},
-    J::AbstractVector{<:QuantumObject{<:Operator}},
-    mJ::AbstractVector{<:QuantumObject{<:Operator}},
+    H::QuantumObject,
+    J::AbstractVector{<:QuantumObject},
+    mJ::AbstractVector{<:QuantumObject},
     nC::Integer,
-    rho_ss::QuantumObject{<:Operator},
+    rho_ss::QuantumObject,
     nu::AbstractVector{<:Real},
 )
     L = _qt_sp(liouvillian(H, J).data)
@@ -28,7 +30,7 @@ end
 
 # Convenience wrapper (H, J, ...) mirroring the QuantumOptics backend.
 function QuantumFCS.drazin(
-    H::QuantumObject{<:Operator},
+    H::QuantumObject,
     J,
     vrho_ss::AbstractVector,
     vId::AbstractVecOrMat,
@@ -43,7 +45,7 @@ end
 
 # Compatibility wrapper for tests using QuantumToolbox: (H, J, ...) signature
 function QuantumFCS.drazin_apply(
-    H::QuantumObject{<:Operator},
+    H::QuantumObject,
     J,
     alphavec::AbstractVector,
     vrho_ss::AbstractVector,
@@ -56,4 +58,20 @@ function QuantumFCS.drazin_apply(
     ρs = SparseVector(vrho_ss)
     vId_vec = collect(vec(vId))
     return QuantumFCS.drazin_apply(L, αs, ρs, vId_vec)
+end
+
+# --- FCSProblem backend hooks (QuantumToolbox) ---
+#
+# These let a `LindbladFCS` problem hold QuantumToolbox operators directly and be
+# solved with the single-argument `fcscumulants_recursive(problem)`. We force
+# sparse `ComplexF64` matrices so the results match the types expected by the core
+# positional `fcscumulants_recursive`.
+QuantumFCS._operator_data(x::QuantumObject) = _qt_sp(x.data)
+QuantumFCS._state_data(x::QuantumObject) = _qt_sp(x.data)
+QuantumFCS._build_liouvillian(H::QuantumObject, J) = _qt_sp(liouvillian(H, J).data)
+
+# Convenience constructor: build a problem from H and J, deferring L to solve time.
+function QuantumFCS.LindbladFCS(H::QuantumObject, J::AbstractVector{<:QuantumObject};
+                                mJ, rho_ss, nu, nC::Integer = 2)
+    return QuantumFCS.LindbladFCS(; H = H, J = J, mJ = mJ, rho_ss = rho_ss, nu = nu, nC = nC)
 end

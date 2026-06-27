@@ -1,6 +1,8 @@
 using QuantumFCS
 using QuantumOptics
 import QuantumToolbox   # imported (not `using`) to avoid clashing with QuantumOptics' exported names
+                        # also transitively loads Krylov + IncompleteLU, which
+                        # activates the QuantumFCSIterativeExt extension.
 using Test
 using LinearAlgebra
 using SparseArrays
@@ -15,5 +17,6 @@ include("../ext/FCS_QuantumOptics_functions.jl")
     include("fcsproblem.jl")
     include("fcsproblem_quantumtoolbox.jl")
     include("quantumtoolbox_backend.jl")
+    include("iterative_drazin.jl")
 end
 

@@ -12,10 +12,13 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [weakdeps]
 QuantumOptics = "6e0679c1-51ea-5a7c-ac74-d61b76210b0c"
 QuantumToolbox = "6c2fb7c5-b903-41d2-bc5e-5a7c320b9fab"
+Krylov = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
+IncompleteLU = "40713840-3770-5561-ab4c-a76e7d0d7895"
 
 [extensions]
-QuantumFCSQuantumOpticsExt = ["QuantumOptics"]    # loads if QuantumOptics is present
-QuantumFCSQuantumToolboxExt = ["QuantumToolbox"]  # loads if QuantumToolbox is present
+QuantumFCSQuantumOpticsExt = ["QuantumOptics"]      # loads if QuantumOptics is present
+QuantumFCSQuantumToolboxExt = ["QuantumToolbox"]    # loads if QuantumToolbox is present
+QuantumFCSIterativeExt = ["Krylov", "IncompleteLU"] # iterative Drazin backend
 
 [compat]
 julia = "1.10, 1.11, 1.12"
@@ -25,6 +28,8 @@ QuantumToolbox = "0.28"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 QuantumOptics = "6e0679c1-51ea-5a7c-ac74-d61b76210b0c"
 QuantumToolbox = "6c2fb7c5-b903-41d2-bc5e-5a7c320b9fab"
+Krylov = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
+IncompleteLU = "40713840-3770-5561-ab4c-a76e7d0d7895"
 
 [targets]
-test = ["Test", "QuantumOptics", "QuantumToolbox"]
+test = ["Test", "QuantumOptics", "QuantumToolbox", "Krylov", "IncompleteLU"]

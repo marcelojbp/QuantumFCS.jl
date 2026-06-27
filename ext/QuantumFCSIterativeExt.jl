@@ -49,16 +49,21 @@ end
 
 Base.:*(G::GaugeOp, x::AbstractVector) = mul!(similar(x, ComplexF64, size(G, 1)), G, x)
 
-# Prepared iterative solver: matrix-free operator + reusable preconditioner.
-struct IterativeDrazinSolver{TA,TP,Tρ,TV} <: DrazinSolver
+# Prepared iterative solver: matrix-free operator + reusable preconditioner +
+# a single reusable GMRES workspace. The recursion applies the Drazin inverse to
+# nC-1 right-hand sides with the *same* operator and preconditioner, so the Krylov
+# basis is allocated once (`ws`) and reused via the in-place `gmres!` rather than
+# reallocated on every solve by the out-of-place `gmres`.
+struct IterativeDrazinSolver{TA,TP,Tρ,TV,TW} <: DrazinSolver
     A::TA              # matrix-free GaugeOp
     P::TP              # ILU preconditioner of (L − σI)
     ρ::Tρ
     vId::TV
+    ws::TW             # preallocated Krylov.GmresWorkspace, reused across RHS
     rtol::Float64      # Krylov relative tolerance
     atol::Float64      # Krylov absolute tolerance
     itmax::Int
-    memory::Int        # GMRES restart memory
+    memory::Int        # GMRES basis size (baked into `ws` at allocation)
     sparsify_rtol::Float64
 end
 
@@ -84,22 +89,34 @@ function QuantumFCS._prepare_iterative_drazin_solver(
     P  = IncompleteLU.ilu(Ls; τ = τ)
     A  = GaugeOp(L, ρ, vId)
 
-    return IterativeDrazinSolver(A, P, ρ, vId, rtol, atol, itmax, memory, sparsify_rtol)
+    # Allocate the GMRES basis once and reuse it for every cumulant-order RHS.
+    # `memory` is a workspace-construction parameter in Krylov (the Krylov basis
+    # size), not a per-solve `gmres!` keyword, so it is fixed here.
+    n  = size(L, 1)
+    ws = Krylov.GmresWorkspace(n, n, Vector{ComplexF64}; memory = memory)
+
+    return IterativeDrazinSolver(A, P, ρ, vId, ws, rtol, atol, itmax, memory, sparsify_rtol)
 end
 
 function QuantumFCS.drazin_solve(s::IterativeDrazinSolver, α::AbstractVector)
     # Project RHS onto range(L): α' = α - ρ (vId·α).
     αp = _drazin_project(α, s.ρ, s.vId)
 
-    # Preconditioned GMRES on the matrix-free gauge-fixed operator.
-    y, stats = Krylov.gmres(s.A, αp;
+    # Preconditioned GMRES on the matrix-free gauge-fixed operator, reusing the
+    # preallocated workspace `s.ws`. `gmres!` zeros the initial guess on entry and
+    # leaves `warm_start = false`, so each RHS is solved cleanly with no leftover
+    # state — only the Krylov basis is shared, not the solution.
+    Krylov.gmres!(s.ws, s.A, αp;
         M = s.P, ldiv = true,
         rtol = s.rtol, atol = s.atol,
-        itmax = s.itmax, memory = s.memory)
+        itmax = s.itmax)
 
+    stats = Krylov.statistics(s.ws)
     stats.solved || @warn "Iterative Drazin solve did not converge" niter=stats.niter rtol=s.rtol
 
-    # Re-impose trace-zero gauge, then sparsify.
+    # Re-impose trace-zero gauge on the solution, then sparsify into a fresh
+    # SparseVector (the next solve overwrites `s.ws.x`, so we copy out here).
+    y = Krylov.solution(s.ws)
     _drazin_gauge!(y, s.ρ, s.vId)
     return _drazin_sparsify(y; rtol = s.sparsify_rtol)
 end

@@ -23,6 +23,8 @@ QuantumFCSIterativeExt = ["Krylov", "IncompleteLU"] # iterative Drazin backend
 [compat]
 julia = "1.10, 1.11, 1.12"
 QuantumToolbox = "0.28"
+Krylov = "0.10"          # iterative ext uses the GmresWorkspace / gmres! API (0.10+)
+IncompleteLU = "0.2"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

@@ -327,9 +327,32 @@ function _drazin_sparsify(y::AbstractVector; rtol::Float64 = 1e-12,
     return sparsevec(nzI, nzV, length(y))
 end
 
+# Apply the cached solve operator to a (dense) RHS. `F` is one of:
+#   nothing       → factorize L on the fly (may throw SingularException)
+#   Factorization → reuse a caller-supplied LU/etc (fast path)
+#   AbstractMatrix → cached dense pseudoinverse: F * y (avoids refactorization)
+# Falls back to a dense pseudoinverse if L turns out to be exactly singular.
+function _drazin_linear_solve(F, L::AbstractMatrix, y::AbstractVector)
+    F isa AbstractMatrix && return F * y
+    try
+        return F === nothing ? (L \ y) : (F \ y)
+    catch e
+        e isa SingularException ? (pinv(Matrix(L)) * y) : rethrow()
+    end
+end
+
+# ============================================================================
+#  Low-level Drazin building blocks
+# ============================================================================
+#
+# `drazin` builds the full (dense) Drazin inverse; `drazin_apply` applies the
+# projected inverse to a single RHS by solving a linear system; `m_jumps` builds
+# the counting-field derivative super-operators ℒ(n). These underpin the LU
+# backend and the public recursion above.
+
 """
     drazin(L, vrho_ss, vId, IdL)
-    
+
 Calculate the Drazin inverse of a Liouvillian defined by the Hamiltonian H and jump operators J.
  
 # Arguments
@@ -339,7 +362,13 @@ Calculate the Drazin inverse of a Liouvillian defined by the Hamiltonian H and j
 * `IdL`: Identity matrix in Liouville space (N×N)
 
 # Returns
-    Drazin inverse as a (sparse)
+A dense matrix holding the (projected) Drazin inverse `Lᴰ` of `L`.
+
+!!! note
+    This builds the full Drazin inverse via a dense pseudoinverse and is intended
+    for small systems or reference checks. For computing cumulants prefer
+    [`prepare_drazin_solver`](@ref) / [`drazin_solve`](@ref), which only apply the
+    inverse to the right-hand sides actually needed.
  """
 function drazin(L, vrho_ss, vId, IdL)
     # Ensure vId is a 1×N row for outer product
@@ -352,9 +381,9 @@ function drazin(L, vrho_ss, vId, IdL)
 end    
  
  """
-    m_jumps(mJ; n=1; nu = vcat(fill(-1, Int(length(J)/2)),fill(1, Int(length(J)/2))))
+    m_jumps(mJ; n=1, nu=vcat(fill(+1, length(mJ)÷2), fill(-1, length(mJ)÷2)))
 
-Calculate the vectorized super-operator ℒ(n) = ∑ₖ (νₖ)ⁿ (Lₖ*)⊗Lₖ.      
+Calculate the vectorized super-operator ℒ(n) = ∑ₖ (νₖ)ⁿ (Lₖ*)⊗Lₖ.
 # Arguments
 * `mJ`: List of monitored jumps
 * `n` : Power of the weights νₖ. By default set to 1, since this case appears more often.
@@ -390,47 +419,13 @@ function drazin_apply(L::SparseMatrixCSC{ComplexF64,Int},
                       F::Union{Nothing, Factorization, AbstractMatrix}=nothing,
                       rtol::Float64=1e-12,
                       atol::Float64=0.0)
-
-    # Project RHS onto range(L): α' = α - ρ * (vId⋅α)
-    sα = dot(vId, α)                      # Complex scalar (uses conjugate in dot)
-    αp = α - (ρ .* sα)                    # stays SparseVector
-
-    # Apply cached solve operator.  F is one of:
-    #   nothing       → factorize L on the fly (may throw SingularException)
-    #   Factorization → reuse LU/etc from caller (fast path)
-    #   AbstractMatrix → cached pseudoinverse: F * αp  (O(l²), avoids refactorization)
-    y = if F isa AbstractMatrix
-        F * Vector(αp)
-    else
-        try
-            F === nothing ? (L \ Vector(αp)) : (F \ Vector(αp))
-        catch e
-            e isa SingularException ? pinv(Matrix(L)) * Vector(αp) : rethrow()
-        end
-    end
-
-    # Enforce gauge: y ← y - ρ * (vId⋅y), but do it *in-place* without densifying ρ
-    sy = dot(vId, y)
-    @inbounds for k in 1:nnz(ρ)
-        i = rowvals(ρ)[k]                 # index of k-th stored entry
-        y[i] -= sy * nonzeros(ρ)[k]       # y[i] -= sy * ρ[i]
-    end
-
-    # One-pass sparsification with absolute/relative threshold
-    thr = max(atol, rtol * norm(y, Inf))
-    nzI = Int[];       sizehint!(nzI, length(y))
-    nzV = ComplexF64[]; sizehint!(nzV, length(y))
-    @inbounds for i in eachindex(y)
-        yi = y[i]
-        if abs(yi) > thr
-            push!(nzI, i); push!(nzV, yi)
-        end
-    end
-    return sparsevec(nzI, nzV, length(y))  # SparseVector{ComplexF64,Int}
+    y = _drazin_project(α, ρ, vId)          # α' = α - ρ (vId⋅α), dense
+    y = _drazin_linear_solve(F, L, y)       # L⁺ α'
+    _drazin_gauge!(y, ρ, vId)               # re-impose trace-zero gauge in place
+    return _drazin_sparsify(y; rtol = rtol, atol = atol)
 end
 
-
-# Add a dense-RHS method
+# Dense-RHS variant: same pipeline, only the input vector is dense.
 function drazin_apply(L::SparseMatrixCSC{ComplexF64,Int},
                       α::AbstractVector{ComplexF64},       # DENSE RHS here
                       ρ::SparseVector{ComplexF64,Int},
@@ -438,48 +433,13 @@ function drazin_apply(L::SparseMatrixCSC{ComplexF64,Int},
                       F::Union{Nothing,Factorization,AbstractMatrix}=nothing,
                       rtol::Float64=1e-12,
                       atol::Float64=0.0)
-
-    # Project RHS onto range(L): α’ = α - ρ * (vId⋅α)
-    sα = dot(vId, α)
-    # work: copy α into y (we’ll reuse it as the solve output as well)
-    y = copy(α)
-    @inbounds for k in 1:nnz(ρ)
-        i = rowvals(ρ)[k]
-        y[i] -= sα * nonzeros(ρ)[k]
-    end
-
-    # Apply cached solve operator (see first drazin_apply overload for details on F types).
-    y = if F isa AbstractMatrix
-        F * y
-    else
-        try
-            F === nothing ? L \ y : F \ y
-        catch e
-            e isa SingularException ? pinv(Matrix(L)) * y : rethrow()
-        end
-    end
-
-    # Enforce gauge: y ← y - ρ * (vId⋅y)
-    sy = dot(vId, y)
-    @inbounds for k in 1:nnz(ρ)
-        i = rowvals(ρ)[k]
-        y[i] -= sy * nonzeros(ρ)[k]
-    end
-
-    # One-pass sparsification
-    thr = max(atol, rtol * norm(y, Inf))
-    nzI = Int[];       sizehint!(nzI, length(y))
-    nzV = ComplexF64[]; sizehint!(nzV, length(y))
-    @inbounds for i in eachindex(y)
-        yi = y[i]
-        if abs(yi) > thr
-            push!(nzI, i); push!(nzV, yi)
-        end
-    end
-    return sparsevec(nzI, nzV, length(y))
+    y = _drazin_project(α, ρ, vId)
+    y = _drazin_linear_solve(F, L, y)
+    _drazin_gauge!(y, ρ, vId)
+    return _drazin_sparsify(y; rtol = rtol, atol = atol)
 end
 
-# vId provided as a 1×N row (e.g., SparseMatrixCSC)
+# vId provided as a 1×N row (e.g., SparseMatrixCSC): flatten and forward.
 function drazin_apply(L::SparseMatrixCSC{T,Int},
                       x::AbstractVector{T},
                       vrho_ss::AbstractVector{T},
@@ -489,40 +449,16 @@ function drazin_apply(L::SparseMatrixCSC{T,Int},
     return drazin_apply(L, x, vrho_ss, vId_vec)
 end
 
+# Dense-Liouvillian variant: returns a dense vector (no sparsification).
 function drazin_apply(L::Matrix{ComplexF64},
                       α::AbstractVector{ComplexF64},
                       ρ::SparseVector{ComplexF64,Int},
                       vId::SparseVector{ComplexF64,Int};
                       F::Union{Nothing, Factorization, AbstractMatrix}=nothing)
-
     @assert size(L,1) == size(L,2) == length(α) == length(vId)
-
-    # α' = α - ρ * (vId⋅α)   (project RHS onto range(L))
-    sα = dot(vId, α)
-    y = copy(α)
-    @inbounds for k = 1:nnz(ρ)
-        i = rowvals(ρ)[k]
-        y[i] -= sα * nonzeros(ρ)[k]
-    end
-
-    # Apply cached solve operator (see first drazin_apply overload for details on F types).
-    y = if F isa AbstractMatrix
-        F * y
-    else
-        try
-            F === nothing ? (L \ y) : (F \ y)
-        catch e
-            e isa SingularException ? pinv(L) * y : rethrow()
-        end
-    end
-
-    # Gauge: y ← y - ρ * (vId⋅y)
-    sy = dot(vId, y)
-    @inbounds for k = 1:nnz(ρ)
-        i = rowvals(ρ)[k]
-        y[i] -= sy * nonzeros(ρ)[k]
-    end
-
+    y = _drazin_project(α, ρ, vId)
+    y = _drazin_linear_solve(F, L, y)
+    _drazin_gauge!(y, ρ, vId)
     return y  # Vector{ComplexF64}
 end
 

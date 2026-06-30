@@ -26,7 +26,17 @@ using SparseArrays: rowvals, nonzeros, nnz
 using Krylov
 using IncompleteLU
 
-# Matrix-free gauge-fixed operator A·x = L·x + ρ·(vId·x).
+"""
+    GaugeOp(L, ρ, vId)
+
+Matrix-free gauge-fixed Liouvillian `A·x = L·x + ρ·(vId·x)`.
+
+`L` is singular (it has the steady state `ρ` as a right null vector and the trace
+functional `vId` as a left null vector). Adding the rank-1 term `ρ·(vId·x)` lifts
+that null mode, making `A` nonsingular while never assembling a dense matrix — only
+its action via `mul!` is needed, so no fill-in is created. Used as the operator
+passed to GMRES.
+"""
 struct GaugeOp{TL,Tρ,TV}
     L::TL
     ρ::Tρ
@@ -49,11 +59,18 @@ end
 
 Base.:*(G::GaugeOp, x::AbstractVector) = mul!(similar(x, ComplexF64, size(G, 1)), G, x)
 
-# Prepared iterative solver: matrix-free operator + reusable preconditioner +
-# a single reusable GMRES workspace. The recursion applies the Drazin inverse to
-# nC-1 right-hand sides with the *same* operator and preconditioner, so the Krylov
-# basis is allocated once (`ws`) and reused via the in-place `gmres!` rather than
-# reallocated on every solve by the out-of-place `gmres`.
+"""
+    IterativeDrazinSolver <: DrazinSolver
+
+Prepared iterative Drazin solver: a matrix-free [`GaugeOp`](@ref), a reusable
+shifted-ILU preconditioner, and a single preallocated GMRES workspace.
+
+The recursion applies the Drazin inverse to `nC-1` right-hand sides with the *same*
+operator and preconditioner, so the Krylov basis is allocated once (`ws`) and
+reused via the in-place `gmres!` rather than reallocated on every solve. Build it
+with `prepare_drazin_solver(L, ρ, vId; method=:iterative, ...)` and apply it with
+[`drazin_solve`](@ref).
+"""
 struct IterativeDrazinSolver{TA,TP,Tρ,TV,TW} <: DrazinSolver
     A::TA              # matrix-free GaugeOp
     P::TP              # ILU preconditioner of (L − σI)
@@ -67,7 +84,24 @@ struct IterativeDrazinSolver{TA,TP,Tρ,TV,TW} <: DrazinSolver
     sparsify_rtol::Float64
 end
 
-# More specific than the core catch-all, so this wins once the extension loads.
+"""
+    _prepare_iterative_drazin_solver(L, ρ, vId; σ=nothing, τ=0.05, rtol=1e-8,
+                                     atol=1e-12, itmax=200, memory=30,
+                                     sparsify_rtol=1e-12)
+
+Build an [`IterativeDrazinSolver`](@ref) for the sparse Liouvillian `L`. Backs the
+`method=:iterative` branch of `prepare_drazin_solver`; more specific than the core
+catch-all, so it takes over once this extension loads.
+
+Keyword arguments:
+* `σ`   — diagonal shift used only to build the ILU preconditioner of `L − σI`.
+  `nothing` auto-scales it to `0.01·maximum(abs, nonzeros(L))`.
+* `τ`   — ILU drop tolerance: smaller keeps more fill (stronger preconditioner,
+  more memory), larger is sparser/cheaper but may need more GMRES iterations.
+* `rtol`/`atol`/`itmax` — GMRES convergence tolerances and iteration cap.
+* `memory` — GMRES Krylov basis size (restart length), fixed at allocation.
+* `sparsify_rtol` — relative threshold for sparsifying each solution.
+"""
 function QuantumFCS._prepare_iterative_drazin_solver(
         L::SparseMatrixCSC{ComplexF64,Int},
         ρ::SparseVector{ComplexF64,Int},

@@ -1,10 +1,8 @@
 # QuantumToolbox backend tests.
 #
-# Isolated in its own module because QuantumToolbox and QuantumOptics export many
-# of the same names (`Operator`, `destroy`, `create`, `steadystate`, ...). Loading
-# both with `using` into the same namespace would create ambiguities, so the
-# QuantumToolbox-based tests live here while the QuantumOptics ones stay in Main.
-module QuantumToolboxBackendTests
+# `@safetestset` runs this file in its own module, so the QuantumToolbox names
+# (`Operator`, `destroy`, `create`, `steadystate`, ...) that clash with
+# QuantumOptics never collide with the QuantumOptics-based test files.
 
 using QuantumFCS
 using QuantumToolbox
@@ -38,8 +36,8 @@ using SparseArrays
 
     c1_analytical = κc * κh / (κc + κh)
     c2_analytical = (κh^2 + κc^2) / (κc + κh)^2 * c1_analytical
-    @test c1 ≈ c1_analytical atol = 1e-10
-    @test c2 ≈ c2_analytical atol = 1e-10
+    @test c1 ≈ c1_analytical atol = 1.0e-10
+    @test c2 ≈ c2_analytical atol = 1.0e-10
 end
 
 @testset "QuantumToolbox vs matrix Liouvillian (two-level system)" begin
@@ -65,7 +63,7 @@ end
     Jm = Matrix{ComplexF64}(J[1].data)
     n = size(Hm, 1)
     Id = Matrix{ComplexF64}(I, n, n)
-    spre(A)  = kron(Id, A)
+    spre(A) = kron(Id, A)
     spost(B) = kron(transpose(B), Id)
 
     JdJ = Jm' * Jm
@@ -86,7 +84,5 @@ end
         nu,
     )
 
-    @test c_qt ≈ c_mat atol = 1e-10
+    @test c_qt ≈ c_mat atol = 1.0e-10
 end
-
-end # module

@@ -1,6 +1,14 @@
+using QuantumFCS
+using QuantumOptics
+using LinearAlgebra
+using SparseArrays
+using Krylov          # together with IncompleteLU, activates QuantumFCSIterativeExt
+using IncompleteLU
+using Test
+
 @testset "Iterative Drazin backend" begin
-    # Requires the QuantumFCSIterativeExt extension. It is activated transitively
-    # by QuantumToolbox (loaded in runtests.jl), which pulls in Krylov + IncompleteLU.
+    # Requires the QuantumFCSIterativeExt extension, activated by loading both
+    # Krylov and IncompleteLU above.
     @test Base.get_extension(QuantumFCS, :QuantumFCSIterativeExt) !== nothing
 
     @testset "matches :lu on a driven damped cavity" begin
@@ -20,11 +28,13 @@
         nu = [1.0]
 
         c_lu = QuantumFCS.fcscumulants_recursive(
-            LindbladFCS(H, J; mJ = mJ, rho_ss = ρss, nu = nu, nC = 3, method = :lu))
+            LindbladFCS(H, J; mJ = mJ, rho_ss = ρss, nu = nu, nC = 3, method = :lu)
+        )
         c_it = QuantumFCS.fcscumulants_recursive(
-            LindbladFCS(H, J; mJ = mJ, rho_ss = ρss, nu = nu, nC = 3, method = :iterative))
+            LindbladFCS(H, J; mJ = mJ, rho_ss = ρss, nu = nu, nC = 3, method = :iterative)
+        )
 
-        @test c_lu ≈ c_it rtol = 1e-5
+        @test c_lu ≈ c_it rtol = 1.0e-5
     end
 
     @testset "low-level prepare_drazin_solver / drazin_solve" begin
@@ -36,16 +46,16 @@
         J = [sqrt(1.0) * a]
         ρss = steadystate.iterative(H, J)
 
-        L = SparseMatrixCSC{ComplexF64,Int}(liouvillian(H, J).data)
+        L = SparseMatrixCSC{ComplexF64, Int}(liouvillian(H, J).data)
         n = size(ρss.data, 1)
         l = n * n
         diag_idx = collect(1:(n + 1):l)
-        vId = SparseVector{ComplexF64,Int}(l, diag_idx, fill(1.0 + 0.0im, n))
+        vId = SparseVector{ComplexF64, Int}(l, diag_idx, fill(1.0 + 0.0im, n))
         vρ = SparseVector(vec(Matrix(ρss.data) ./ tr(ρss.data)))
 
-        # Qualify with `QuantumFCS.` so these hit the package functions that the
-        # extension extends (runtests.jl also `include`s the source into Main).
-        solver = QuantumFCS.prepare_drazin_solver(L, vρ, vId; method = :iterative, rtol = 1e-10)
+        # Qualify with `QuantumFCS.` so these hit the (non-exported) package
+        # functions that the iterative extension extends.
+        solver = QuantumFCS.prepare_drazin_solver(L, vρ, vId; method = :iterative, rtol = 1.0e-10)
         @test solver isa QuantumFCS.DrazinSolver
 
         # Consistent RHS lying in range(L).
@@ -54,10 +64,10 @@
         y = QuantumFCS.drazin_solve(solver, α)
 
         # Gauge: trace of the (de-vectorized) result vanishes.
-        @test abs(dot(vId, y)) < 1e-8
+        @test abs(dot(vId, y)) < 1.0e-8
         # Solves the projected system L y ≈ α' = α − ρ (vId·α).
         αp = α .- vρ .* dot(vId, α)
-        @test norm(L * Vector(y) .- αp) / norm(αp) < 1e-6
+        @test norm(L * Vector(y) .- αp) / norm(αp) < 1.0e-6
     end
 
     @testset "analytic quantum-dot current and noise" begin
@@ -75,10 +85,12 @@
         c1_analytical = κc * κh / (κc + κh)
         c2_analytical = (κh^2 + κc^2) / (κc + κh)^2 * c1_analytical
 
-        p = LindbladFCS(H, J; mJ = [Jcloss], rho_ss = ρss, nu = [1], nC = 2,
-                        method = :iterative)
+        p = LindbladFCS(
+            H, J; mJ = [Jcloss], rho_ss = ρss, nu = [1], nC = 2,
+            method = :iterative
+        )
         c1, c2 = QuantumFCS.fcscumulants_recursive(p)
-        @test c1 ≈ c1_analytical rtol = 1e-6
-        @test c2 ≈ c2_analytical rtol = 1e-6
+        @test c1 ≈ c1_analytical rtol = 1.0e-6
+        @test c2 ≈ c2_analytical rtol = 1.0e-6
     end
 end

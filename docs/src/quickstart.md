@@ -43,3 +43,28 @@ println("First cumulant : $c1")
 println("Second cumulant : $c2") 
 ```
 
+## Without a quantum framework
+
+You do not need `QuantumOptics.jl` (or `QuantumToolbox.jl`). If you already have a
+vectorised Liouvillian `L`, its steady state `ρss`, and your monitored jump operators
+`mJ`, call the core method directly:
+
+```julia
+using QuantumFCS
+
+# L    : ComplexF64 sparse/dense matrix — the vectorized Liouvillian
+# mJ   : Vector of monitored jump operators (matrices, not super-operators)
+# ρss  : steady-state density matrix
+# nu   : weights, one per entry of mJ
+c1, c2, c3 = fcscumulants_recursive(L, mJ, 3, ρss, nu)
+```
+
+See the [Examples](@ref examples) for a full manual Liouvillian construction.
+
+## Next steps
+
+- For large sparse Liouvillians, switch to the matrix-free iterative backend with
+  `fcscumulants_recursive(...; method = :iterative)` — see [Drazin solvers](@ref solvers).
+- To bundle a problem with its solver options, use the [`LindbladFCS`](@ref) problem type
+  and call `fcscumulants_recursive(problem)`.
+

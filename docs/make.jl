@@ -19,6 +19,7 @@ makedocs(
         "Home"       => "index.md",
         "Quickstart" => "quickstart.md",
         "Mathematical Background" => "math.md",
+        "Drazin solvers" => "solvers.md",
         "Examples"   => "examples.md",
         "API"        => "api.md",
     ],

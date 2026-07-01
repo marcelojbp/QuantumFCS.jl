@@ -6,6 +6,8 @@
 
 -📘 Read up on the [Mathematical Background](@ref math)
 
+-⚙️ Pick a backend for large systems in [Drazin solvers](@ref solvers)
+
 -🧭 Browse the [API](@ref api)
 
 -📝 Study the [Examples](@ref examples)

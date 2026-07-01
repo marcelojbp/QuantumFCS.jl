@@ -21,11 +21,12 @@ function QuantumFCS.fcscumulants_recursive(
     mJ::AbstractVector{<:QuantumObject},
     nC::Integer,
     rho_ss::QuantumObject,
-    nu::AbstractVector{<:Real},
+    nu::AbstractVector{<:Real};
+    kwargs...,
 )
     L = _qt_sp(liouvillian(H, J).data)
     mJ_mats = SparseMatrixCSC{ComplexF64, Int}[_qt_sp(m.data) for m in mJ]
-    return QuantumFCS.fcscumulants_recursive(L, mJ_mats, nC, _qt_sp(rho_ss.data), nu)
+    return QuantumFCS.fcscumulants_recursive(L, mJ_mats, nC, _qt_sp(rho_ss.data), nu; kwargs...)
 end
 
 # Convenience wrapper (H, J, ...) mirroring the QuantumOptics backend.
@@ -72,6 +73,7 @@ QuantumFCS._build_liouvillian(H::QuantumObject, J) = _qt_sp(liouvillian(H, J).da
 
 # Convenience constructor: build a problem from H and J, deferring L to solve time.
 function QuantumFCS.LindbladFCS(H::QuantumObject, J::AbstractVector{<:QuantumObject};
-                                mJ, rho_ss, nu, nC::Integer = 2)
-    return QuantumFCS.LindbladFCS(; H = H, J = J, mJ = mJ, rho_ss = rho_ss, nu = nu, nC = nC)
+                                mJ, rho_ss, nu, nC::Integer = 2, kwargs...)
+    return QuantumFCS.LindbladFCS(; H = H, J = J, mJ = mJ, rho_ss = rho_ss,
+                                  nu = nu, nC = nC, kwargs...)
 end

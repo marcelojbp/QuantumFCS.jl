@@ -4,6 +4,7 @@
 [![Docs: dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://marcelojbp.github.io/QuantumFCS.jl)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Cite](https://img.shields.io/badge/cite-CITATION.bib-informational.svg)](CITATION.bib)
+[![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
 
 *A Julia package for computing Full Counting Statistics (FCS) of open quantum systems.*
 

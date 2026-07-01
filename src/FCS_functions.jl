@@ -15,18 +15,18 @@ Alternatively, one can provide the Hamiltonian and jump operators instead of `L`
 * `nu`: Vector of length `length(mJ)` with weights for each jump.
 """
 function fcscumulants_recursive(
-    L::SparseMatrixCSC{ComplexF64, Int},
-    mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64, Int}},
-    nC::Integer,
-    rho_ss::SparseMatrixCSC{ComplexF64, Int},
-    nu::AbstractVector{<:Real};
-    method::Symbol = :lu,
-    σ = nothing,
-    τ::Float64 = 0.05,
-    rtol::Float64 = 1e-8,
-    itmax::Int = 200,
-    memory::Int = 30,
-)
+        L::SparseMatrixCSC{ComplexF64, Int},
+        mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64, Int}},
+        nC::Integer,
+        rho_ss::SparseMatrixCSC{ComplexF64, Int},
+        nu::AbstractVector{<:Real};
+        method::Symbol = :lu,
+        σ = nothing,
+        τ::Float64 = 0.05,
+        rtol::Float64 = 1.0e-8,
+        itmax::Int = 200,
+        memory::Int = 30,
+    )
     if length(mJ) != length(nu)
         throw(ArgumentError("Length of mJ ($(length(mJ))) must match length of nu ($(length(nu)))."))
     end
@@ -36,11 +36,11 @@ function fcscumulants_recursive(
 
     # Vectorized identity (diagonal entries of an n×n identity under vec)
     # Indices: 1:(n+1):l in column-major vectorization
-    diag_idx = collect(1:(n+1):l)
-    vId = SparseVector{ComplexF64,Int}(l, diag_idx, fill(1.0 + 0.0im, n))
+    diag_idx = collect(1:(n + 1):l)
+    vId = SparseVector{ComplexF64, Int}(l, diag_idx, fill(1.0 + 0.0im, n))
 
     # d/dχ n-derivatives ℒ(n)
-    Ln = [m_jumps(mJ; n = k, nu = nu) for k = 1:nC]
+    Ln = [m_jumps(mJ; n = k, nu = nu) for k in 1:nC]
 
     # Vectorized steady state, normalized
     vrho_ss = SparseVector(vec(rho_ss ./ tr(rho_ss)))
@@ -49,10 +49,12 @@ function fcscumulants_recursive(
     # caches a sparse LU (default); :iterative builds a matrix-free preconditioned
     # Krylov solver for large sparse Liouvillians (extension required). LU keeps the
     # established 1e-12 sparsify threshold; iterative uses `rtol` as the Krylov tol.
-    solver = prepare_drazin_solver(L, vrho_ss, vId;
+    solver = prepare_drazin_solver(
+        L, vrho_ss, vId;
         method = method,
-        rtol = (method === :lu ? 1e-12 : rtol),
-        σ = σ, τ = τ, itmax = itmax, memory = memory)
+        rtol = (method === :lu ? 1.0e-12 : rtol),
+        σ = σ, τ = τ, itmax = itmax, memory = memory
+    )
 
     # Outputs
     vI = Vector{Float64}(undef, nC)
@@ -70,10 +72,10 @@ function fcscumulants_recursive(
     αbuf = zeros(ComplexF64, l)               # accumulates valpha densely
 
     # main recursion
-    for ncur = 2:nC
+    for ncur in 2:nC
         # Build valpha = Σ_{m=1}^{n-1} binom(n-1,m) * ( vI[m]*vrho[n-m] - Ln[m]*vrho[n-m] )
         fill!(αbuf, 0)
-        for m = 1:(ncur-1)
+        for m in 1:(ncur - 1)
             c = binomial(ncur - 1, m)
             # αbuf += c * vI[m] * vrho[n-m]
             sv = vrho[ncur - m]
@@ -93,7 +95,7 @@ function fcscumulants_recursive(
 
         # I_n = Re( Σ_{m=1}^n binom(n,m) * vId⋅(Ln[m] * vrho[n+1-m]) )
         acc = 0.0
-        for m = 1:ncur
+        for m in 1:ncur
             mul!(tmp, Ln[m], vrho[ncur + 1 - m])
             acc += binomial(ncur, m) * real(dot(vId, tmp))
         end
@@ -104,22 +106,25 @@ function fcscumulants_recursive(
 end
 # Dense method
 function fcscumulants_recursive(
-    L::Matrix{ComplexF64},
-    mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64,Int}},
-    nC::Integer,
-    rho_ss::Union{SparseMatrixCSC{ComplexF64,Int}, Matrix{ComplexF64}},
-    nu::AbstractVector{<:Real};
-    method::Symbol = :lu,
-    kwargs...,
-)
+        L::Matrix{ComplexF64},
+        mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64, Int}},
+        nC::Integer,
+        rho_ss::Union{SparseMatrixCSC{ComplexF64, Int}, Matrix{ComplexF64}},
+        nu::AbstractVector{<:Real};
+        method::Symbol = :lu,
+        kwargs...,
+    )
     # The iterative backend targets large *sparse* Liouvillians; a dense L is by
     # definition small, so the dense path always uses the cached direct solve.
-    method === :lu || throw(ArgumentError(
-        "fcscumulants_recursive with a dense Liouvillian supports only method=:lu " *
-        "(got :$(method)); the :iterative backend requires a sparse L."))
+    method === :lu || throw(
+        ArgumentError(
+            "fcscumulants_recursive with a dense Liouvillian supports only method=:lu " *
+                "(got :$(method)); the :iterative backend requires a sparse L."
+        )
+    )
     # Dimensions
     n = size(rho_ss, 1)
-    l = n*n
+    l = n * n
 
     # Cached solve operator: try LU, fall back to dense pseudoinverse (computed once).
     F = try
@@ -127,13 +132,13 @@ function fcscumulants_recursive(
     catch e
         e isa SingularException ? pinv(L) : rethrow()
     end
-    
+
     # Vectorized identity as a sparse vector: indices 1:(n+1):l (column-major)
-    diag_idx = collect(1:(n+1):l)
-    vId = SparseVector{ComplexF64,Int}(l, diag_idx, fill(1.0 + 0.0im, n))
+    diag_idx = collect(1:(n + 1):l)
+    vId = SparseVector{ComplexF64, Int}(l, diag_idx, fill(1.0 + 0.0im, n))
 
     # ℒ(n) derivative matrices (still sparse is fine)
-    Ln = [m_jumps(mJ; n = k, nu = nu) for k = 1:nC]
+    Ln = [m_jumps(mJ; n = k, nu = nu) for k in 1:nC]
 
     # Vectorized steady-state, normalized, **dense** state vector
     trρ = tr(rho_ss)
@@ -157,10 +162,10 @@ function fcscumulants_recursive(
     # Pre-computed once; passed to drazin_apply on every cumulant step
     vrho_ss_sparse = SparseVector(vrho1_dense)
 
-    for ncur = 2:nC
+    for ncur in 2:nC
         # valpha = Σ_{m=1}^{n-1} C(n-1,m) * ( vI[m]*vρ[n-m] - Ln[m]*vρ[n-m] )
         fill!(αbuf, 0)
-        for m = 1:(ncur-1)
+        for m in 1:(ncur - 1)
             c = binomial(ncur - 1, m)
 
             # αbuf += c * vI[m] * vρ[n-m]
@@ -181,7 +186,7 @@ function fcscumulants_recursive(
 
         # I_n = Re( Σ_{m=1}^n C(n,m) * vId⋅(Ln[m] * vρ[n+1-m]) )
         acc = 0.0
-        for m = 1:ncur
+        for m in 1:ncur
             mul!(tmp, Ln[m], vρ[ncur + 1 - m])
             acc += binomial(ncur, m) * real(dot(vId, tmp))
         end
@@ -241,12 +246,14 @@ the `QuantumFCSIterativeExt` extension (`using Krylov, IncompleteLU`). Keyword
 arguments `σ`/`τ`/`itmax`/`memory`/`rtol` configure the iterative backend and are
 ignored by the LU backend.
 """
-function prepare_drazin_solver(L::SparseMatrixCSC{ComplexF64,Int},
-                               ρ::SparseVector{ComplexF64,Int},
-                               vId::AbstractVector{ComplexF64};
-                               method::Symbol = :lu,
-                               rtol::Float64 = 1e-12,
-                               kwargs...)
+function prepare_drazin_solver(
+        L::SparseMatrixCSC{ComplexF64, Int},
+        ρ::SparseVector{ComplexF64, Int},
+        vId::AbstractVector{ComplexF64};
+        method::Symbol = :lu,
+        rtol::Float64 = 1.0e-12,
+        kwargs...
+    )
     if method === :lu
         # Cached solve operator: LU, or dense pseudoinverse if exactly singular.
         F = try
@@ -263,7 +270,7 @@ function prepare_drazin_solver(L::SparseMatrixCSC{ComplexF64,Int},
 end
 
 # Cached-LU backend. `F` is an LU factorization or a dense pseudoinverse.
-struct LUDrazinSolver{TL,TF,Tρ,TI} <: DrazinSolver
+struct LUDrazinSolver{TL, TF, Tρ, TI} <: DrazinSolver
     L::TL
     F::TF
     ρ::Tρ
@@ -280,8 +287,12 @@ drazin_solve(s::LUDrazinSolver, α::AbstractVector) =
 # `QuantumFCSIterativeExt` extension adds a more specific (and therefore
 # preferred) method once Krylov and IncompleteLU are loaded.
 function _prepare_iterative_drazin_solver(args...; kwargs...)
-    error("The :iterative Drazin backend requires the Krylov and IncompleteLU " *
-          "packages. Run `using Krylov, IncompleteLU` to enable it.")
+    throw(
+        ArgumentError(
+            "The :iterative Drazin backend requires the Krylov and IncompleteLU " *
+                "packages. Run `using Krylov, IncompleteLU` to enable it."
+        )
+    )
 end
 
 # --- Shared building blocks for Drazin backends ----------------------------
@@ -289,8 +300,10 @@ end
 # iterative extension can reuse them without densifying ρ.
 
 # Project the RHS onto range(L): α' = α - ρ (vId⋅α). Returns a dense copy.
-function _drazin_project(α::AbstractVector, ρ::SparseVector{ComplexF64,Int},
-                         vId::AbstractVector)
+function _drazin_project(
+        α::AbstractVector, ρ::SparseVector{ComplexF64, Int},
+        vId::AbstractVector
+    )
     sα = dot(vId, α)
     y = Vector{ComplexF64}(undef, length(α))
     copyto!(y, α)
@@ -302,8 +315,10 @@ function _drazin_project(α::AbstractVector, ρ::SparseVector{ComplexF64,Int},
 end
 
 # Enforce the trace-zero gauge in place: y ← y - ρ (vId⋅y).
-function _drazin_gauge!(y::AbstractVector, ρ::SparseVector{ComplexF64,Int},
-                        vId::AbstractVector)
+function _drazin_gauge!(
+        y::AbstractVector, ρ::SparseVector{ComplexF64, Int},
+        vId::AbstractVector
+    )
     sy = dot(vId, y)
     @inbounds for k in 1:nnz(ρ)
         i = rowvals(ρ)[k]
@@ -313,8 +328,10 @@ function _drazin_gauge!(y::AbstractVector, ρ::SparseVector{ComplexF64,Int},
 end
 
 # One-pass sparsification with absolute/relative threshold.
-function _drazin_sparsify(y::AbstractVector; rtol::Float64 = 1e-12,
-                          atol::Float64 = 0.0)
+function _drazin_sparsify(
+        y::AbstractVector; rtol::Float64 = 1.0e-12,
+        atol::Float64 = 0.0
+    )
     thr = max(atol, rtol * norm(y, Inf))
     nzI = Int[];        sizehint!(nzI, length(y))
     nzV = ComplexF64[]; sizehint!(nzV, length(y))
@@ -378,9 +395,9 @@ function drazin(L, vrho_ss, vId, IdL)
     # The Drazin inverse is computed by projecting the Moore-Penrose pseudo-inverse, computed using pinv.
     LD = Q * pinv(Matrix(L)) * Q
     return LD
-end    
- 
- """
+end
+
+"""
     m_jumps(mJ; n=1, nu=vcat(fill(+1, length(mJ)÷2), fill(-1, length(mJ)÷2)))
 
 Calculate the vectorized super-operator ℒ(n) = ∑ₖ (νₖ)ⁿ (Lₖ*)⊗Lₖ.
@@ -391,8 +408,8 @@ Calculate the vectorized super-operator ℒ(n) = ∑ₖ (νₖ)ⁿ (Lₖ*)⊗L�
 """
 function m_jumps(mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64, Int}}; n::Integer = 1, nu = vcat(fill(+1, Int(length(mJ) ÷ 2)), fill(-1, Int(length(mJ) ÷ 2))))
     # Sum of sparse Kronecker products stays sparse; element types remain ComplexF64
-    return sum(nu[k]^n * kron(conj(mJ[k]), mJ[k]) for k = 1:length(mJ))
-end    
+    return sum(nu[k]^n * kron(conj(mJ[k]), mJ[k]) for k in 1:length(mJ))
+end
 
 """
     drazin_apply(L, α, ρ, vId; F=nothing, rtol=1e-12, atol=0.0)
@@ -412,13 +429,15 @@ Apply the (projected) Drazin inverse of the Liouvillean `L` to the vector `α` b
 A (sparse) vector representing the result of applying the projected Drazin inverse.
 
 """
-function drazin_apply(L::SparseMatrixCSC{ComplexF64,Int},
-                      α::SparseVector{ComplexF64,Int},
-                      ρ::SparseVector{ComplexF64,Int},
-                      vId::AbstractVector{ComplexF64};
-                      F::Union{Nothing, Factorization, AbstractMatrix}=nothing,
-                      rtol::Float64=1e-12,
-                      atol::Float64=0.0)
+function drazin_apply(
+        L::SparseMatrixCSC{ComplexF64, Int},
+        α::SparseVector{ComplexF64, Int},
+        ρ::SparseVector{ComplexF64, Int},
+        vId::AbstractVector{ComplexF64};
+        F::Union{Nothing, Factorization, AbstractMatrix} = nothing,
+        rtol::Float64 = 1.0e-12,
+        atol::Float64 = 0.0
+    )
     y = _drazin_project(α, ρ, vId)          # α' = α - ρ (vId⋅α), dense
     y = _drazin_linear_solve(F, L, y)       # L⁺ α'
     _drazin_gauge!(y, ρ, vId)               # re-impose trace-zero gauge in place
@@ -426,13 +445,15 @@ function drazin_apply(L::SparseMatrixCSC{ComplexF64,Int},
 end
 
 # Dense-RHS variant: same pipeline, only the input vector is dense.
-function drazin_apply(L::SparseMatrixCSC{ComplexF64,Int},
-                      α::AbstractVector{ComplexF64},       # DENSE RHS here
-                      ρ::SparseVector{ComplexF64,Int},
-                      vId::SparseVector{ComplexF64,Int};
-                      F::Union{Nothing,Factorization,AbstractMatrix}=nothing,
-                      rtol::Float64=1e-12,
-                      atol::Float64=0.0)
+function drazin_apply(
+        L::SparseMatrixCSC{ComplexF64, Int},
+        α::AbstractVector{ComplexF64},       # DENSE RHS here
+        ρ::SparseVector{ComplexF64, Int},
+        vId::SparseVector{ComplexF64, Int};
+        F::Union{Nothing, Factorization, AbstractMatrix} = nothing,
+        rtol::Float64 = 1.0e-12,
+        atol::Float64 = 0.0
+    )
     y = _drazin_project(α, ρ, vId)
     y = _drazin_linear_solve(F, L, y)
     _drazin_gauge!(y, ρ, vId)
@@ -440,26 +461,34 @@ function drazin_apply(L::SparseMatrixCSC{ComplexF64,Int},
 end
 
 # vId provided as a 1×N row (e.g., SparseMatrixCSC): flatten and forward.
-function drazin_apply(L::SparseMatrixCSC{T,Int},
-                      x::AbstractVector{T},
-                      vrho_ss::AbstractVector{T},
-                      vId_row::AbstractMatrix{T}) where {T<:Number}
-    @assert size(vId_row,1) == 1
-    vId_vec = vec(permutedims(vId_row)) :: Vector{T}
+function drazin_apply(
+        L::SparseMatrixCSC{T, Int},
+        x::AbstractVector{T},
+        vrho_ss::AbstractVector{T},
+        vId_row::AbstractMatrix{T}
+    ) where {T <: Number}
+    size(vId_row, 1) == 1 ||
+        throw(DimensionMismatch("vId_row must be a 1×N row (got size $(size(vId_row)))."))
+    vId_vec = vec(permutedims(vId_row))::Vector{T}
     return drazin_apply(L, x, vrho_ss, vId_vec)
 end
 
 # Dense-Liouvillian variant: returns a dense vector (no sparsification).
-function drazin_apply(L::Matrix{ComplexF64},
-                      α::AbstractVector{ComplexF64},
-                      ρ::SparseVector{ComplexF64,Int},
-                      vId::SparseVector{ComplexF64,Int};
-                      F::Union{Nothing, Factorization, AbstractMatrix}=nothing)
-    @assert size(L,1) == size(L,2) == length(α) == length(vId)
+function drazin_apply(
+        L::Matrix{ComplexF64},
+        α::AbstractVector{ComplexF64},
+        ρ::SparseVector{ComplexF64, Int},
+        vId::SparseVector{ComplexF64, Int};
+        F::Union{Nothing, Factorization, AbstractMatrix} = nothing
+    )
+    size(L, 1) == size(L, 2) == length(α) == length(vId) ||
+        throw(
+        DimensionMismatch(
+            "Incompatible sizes: L is $(size(L)), length(α)=$(length(α)), length(vId)=$(length(vId))."
+        )
+    )
     y = _drazin_project(α, ρ, vId)
     y = _drazin_linear_solve(F, L, y)
     _drazin_gauge!(y, ρ, vId)
     return y  # Vector{ComplexF64}
 end
-
-

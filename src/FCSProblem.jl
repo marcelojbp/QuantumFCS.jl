@@ -42,42 +42,50 @@ Solve with [`fcscumulants_recursive`](@ref):
     # large sparse Liouvillian (needs `using Krylov, IncompleteLU`):
     p = LindbladFCS(; L=L, mJ=[Jc], rho_ss=ρss, nu=[1], nC=3, method=:iterative)
 """
-@kwdef struct LindbladFCS{TH,TJ,TL,TmJ,Tρ,Tν} <: FCSProblem
-    H::TH      = nothing
-    J::TJ      = nothing
-    L::TL      = nothing
+@kwdef struct LindbladFCS{TH, TJ, TL, TmJ, Tρ, Tν} <: FCSProblem
+    H::TH = nothing
+    J::TJ = nothing
+    L::TL = nothing
     mJ::TmJ
     rho_ss::Tρ
     nu::Tν
-    nC::Int    = 2
-    method::Symbol             = :lu
-    σ::Union{Nothing,Float64}  = nothing
-    τ::Float64                 = 0.05
-    rtol::Float64              = 1e-8
-    itmax::Int                 = 200
-    memory::Int                = 30
+    nC::Int = 2
+    method::Symbol = :lu
+    σ::Union{Nothing, Float64} = nothing
+    τ::Float64 = 0.05
+    rtol::Float64 = 1.0e-8
+    itmax::Int = 200
+    memory::Int = 30
 
-    function LindbladFCS{TH,TJ,TL,TmJ,Tρ,Tν}(H, J, L, mJ, rho_ss, nu, nC,
-                                             method, σ, τ, rtol, itmax, memory) where {TH,TJ,TL,TmJ,Tρ,Tν}
+    function LindbladFCS{TH, TJ, TL, TmJ, Tρ, Tν}(
+            H, J, L, mJ, rho_ss, nu, nC,
+            method, σ, τ, rtol, itmax, memory
+        ) where {TH, TJ, TL, TmJ, Tρ, Tν}
         if L === nothing && (H === nothing || J === nothing)
             throw(ArgumentError("LindbladFCS requires either `L`, or both `H` and `J`."))
         end
         if length(mJ) != length(nu)
             throw(ArgumentError("Length of mJ ($(length(mJ))) must match length of nu ($(length(nu)))."))
         end
-        return new{TH,TJ,TL,TmJ,Tρ,Tν}(H, J, L, mJ, rho_ss, nu, nC,
-                                       method, σ, τ, rtol, itmax, memory)
+        return new{TH, TJ, TL, TmJ, Tρ, Tν}(
+            H, J, L, mJ, rho_ss, nu, nC,
+            method, σ, τ, rtol, itmax, memory
+        )
     end
 end
 
 # Non-parametric forwarding constructor: infers the type parameters from the
 # arguments. This is what the `@kwdef`-generated keyword constructor calls.
-function LindbladFCS(H::TH, J::TJ, L::TL, mJ::TmJ, rho_ss::Tρ, nu::Tν, nC::Integer,
-                     method::Symbol, σ::Union{Nothing,Float64}, τ::Real, rtol::Real,
-                     itmax::Integer, memory::Integer) where {TH,TJ,TL,TmJ,Tρ,Tν}
-    return LindbladFCS{TH,TJ,TL,TmJ,Tρ,Tν}(H, J, L, mJ, rho_ss, nu, nC,
-                                           method, σ, Float64(τ), Float64(rtol),
-                                           Int(itmax), Int(memory))
+function LindbladFCS(
+        H::TH, J::TJ, L::TL, mJ::TmJ, rho_ss::Tρ, nu::Tν, nC::Integer,
+        method::Symbol, σ::Union{Nothing, Float64}, τ::Real, rtol::Real,
+        itmax::Integer, memory::Integer
+    ) where {TH, TJ, TL, TmJ, Tρ, Tν}
+    return LindbladFCS{TH, TJ, TL, TmJ, Tρ, Tν}(
+        H, J, L, mJ, rho_ss, nu, nC,
+        method, σ, Float64(τ), Float64(rtol),
+        Int(itmax), Int(memory)
+    )
 end
 
 # --- Backend-agnostic data extraction -------------------------------------
@@ -90,13 +98,16 @@ end
 # Liouvillian: dispatch on the third type parameter (`TL`). When `L` is stored
 # (`TL !== Nothing`) use it directly; when it is absent (`TL === Nothing`) build
 # it from `H`/`J` via the active backend.
-_liouvillian_data(p::LindbladFCS{<:Any,<:Any,Nothing}) = _build_liouvillian(p.H, p.J)
+_liouvillian_data(p::LindbladFCS{<:Any, <:Any, Nothing}) = _build_liouvillian(p.H, p.J)
 _liouvillian_data(p::LindbladFCS) = p.L
 
 # No backend loaded: building L from H/J is impossible. Fail with a clear message.
-_build_liouvillian(H, J) = throw(ArgumentError(
-    "Cannot build a Liouvillian from `H` and `J`: no backend extension is loaded. " *
-    "Load QuantumOptics or QuantumToolbox, or construct the problem with `L` directly."))
+_build_liouvillian(H, J) = throw(
+    ArgumentError(
+        "Cannot build a Liouvillian from `H` and `J`: no backend extension is loaded. " *
+            "Load QuantumOptics or QuantumToolbox, or construct the problem with `L` directly."
+    )
+)
 
 # Plain arrays pass through unchanged; backends override for their operator types.
 _operator_data(x) = x
@@ -104,10 +115,14 @@ _state_data(x) = x
 
 # Drazin-solver options carried by a problem. The generic fallback keeps the
 # established direct-LU behavior; `LindbladFCS` overrides it with its own fields.
-_solver_opts(::FCSProblem) = (method = :lu, σ = nothing, τ = 0.05,
-                              rtol = 1e-8, itmax = 200, memory = 30)
-_solver_opts(p::LindbladFCS) = (method = p.method, σ = p.σ, τ = p.τ,
-                                rtol = p.rtol, itmax = p.itmax, memory = p.memory)
+_solver_opts(::FCSProblem) = (
+    method = :lu, σ = nothing, τ = 0.05,
+    rtol = 1.0e-8, itmax = 200, memory = 30,
+)
+_solver_opts(p::LindbladFCS) = (
+    method = p.method, σ = p.σ, τ = p.τ,
+    rtol = p.rtol, itmax = p.itmax, memory = p.memory,
+)
 
 """
     fcscumulants_recursive(problem::FCSProblem)
@@ -118,11 +133,13 @@ problem's fields, after normalizing any backend operators to their underlying
 matrices.
 """
 function fcscumulants_recursive(p::FCSProblem)
-    L  = _liouvillian_data(p)
+    L = _liouvillian_data(p)
     mJ = map(_operator_data, p.mJ)
-    ρ  = _state_data(p.rho_ss)
-    o  = _solver_opts(p)
-    return fcscumulants_recursive(L, mJ, p.nC, ρ, p.nu;
+    ρ = _state_data(p.rho_ss)
+    o = _solver_opts(p)
+    return fcscumulants_recursive(
+        L, mJ, p.nC, ρ, p.nu;
         method = o.method, σ = o.σ, τ = o.τ,
-        rtol = o.rtol, itmax = o.itmax, memory = o.memory)
+        rtol = o.rtol, itmax = o.itmax, memory = o.memory
+    )
 end

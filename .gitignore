@@ -1,3 +1,4 @@
+.DS_Store
 /Manifest.toml
 src/untracked_notebook.ipynb
 notebooks/benchmark.jl

@@ -18,18 +18,18 @@ It implements a recursive method in which the $n+1$-th cumulant is computed usin
 
 ## Features
 
-- Compute current cumulants to arbitrary order
-- Support for **sparse** and **dense** matrix backends  
-- Methods for integration with `QuantumOptics.jl` operators, states.
-- Does not need `QuantumOptics.jl`; you can build your Liouvillian however you like and use `QuantumFCS.jl`.
-
-
-### Main function
-- `fcscumulants_recursive(L, mJ, nC, rho_ss, nu)` – compute FCS cumulants up to order `nC`, taking as input 
-a (vectorised) Liouvillian, `L`, the steady-state `rho_ss`, a vector of monitored jumps `mJ`, and a vector `nu` to attribute sign 
-and unitful weighs to the monitored jumps.
-- `fcscumulants_recursive(H,J, mJ, nC, rho_ss, nu)` – Method for quantum optics---you can pass, instead of the Liouvillian,
-the Hamiltonian and the vector of all jump operators.
+- **Current cumulants to arbitrary order** for Lindblad master equations, via the
+  Flindt et al. recursive scheme.
+- **Multiple monitored jump channels** with signed / unitful weights (`nu`) — count
+  particles ($\pm 1$), charge ($e$), heat/work (energy), etc.
+- **Two Drazin-inverse backends behind one interface**: a direct sparse **LU** backend
+  (`:lu`, default) and a matrix-free, preconditioned-GMRES **iterative** backend
+  (`:iterative`) for large sparse Liouvillians — see the
+  [Drazin solvers](https://marcelojbp.github.io/QuantumFCS.jl/dev/solvers/) guide.
+- **Works with plain arrays, [`QuantumOptics.jl`](https://qojulia.org), and
+  [`QuantumToolbox.jl`](https://qutip.org/QuantumToolbox.jl/)** — the relevant extension
+  loads automatically. No framework is required; build your Liouvillian however you like.
+- A **`LindbladFCS`** problem type to bundle a problem together with its solver options.
 
 *(See the [API docs](https://marcelojbp.github.io/QuantumFCS.jl) for the full list.)*
 
@@ -42,30 +42,57 @@ Pkg.add("QuantumFCS")
 
 ## Quickstart example
 
-This example requires you to provide the vectorised Liouvillian, its steady-state and specify other inputs as described below.
+A self-contained example: a single quantum dot coupled to a hot and a cold reservoir,
+built with `QuantumOptics.jl`. We monitor electrons entering the cold reservoir and
+compute the first two cumulants of the current.
 
 ```julia
+using QuantumOptics
 using QuantumFCS
 
-# Build your Liouvillian L and monitored jumps mJ
-# L     : Complex sparse/dense matrix   (vectorized Liouvillian)
-# mJ    : Vector of sparse jump super-operators you want to monitor
-# nC    : Number of cumulats to be computed
-# rho_ss : Steady-state density matrix (matrix, not vectorized)
-# nu     : Vector of weighs (same length as mJ) for the monitored jumps
+b = FockBasis(1)                 # single fermionic mode
+d = destroy(b); d_dag = create(b)
 
-mJ = [sqrt(kappa) * a, sqrt(kappa) * a_dagger] #Monitoring loss and injection of photons
-nu = [-1, 1] #We count -1 if we anihilate and +1 if we create
-# compute first 3 cumulants
-c1, c2, c3 = fcscumulants_recursive(L, mJ, 3, rho_ss, nu)
+ϵd = 1.0                         # dot energy level
+κc = 0.1; κh = 0.5              # cold / hot coupling strengths
 
+H = ϵd * d_dag * d              # Hamiltonian
+Jcloss = sqrt(κc) * d           # jump into the cold reservoir
+Jhgain = sqrt(κh) * d_dag       # jump from the hot reservoir
+J = [Jcloss, Jhgain]
+
+ρss = steadystate.iterative(H, J)
+
+mJ = [Jcloss]                   # monitored jump(s)
+nu = [1]                        # weight(s): +1 per electron into the cold bath
+
+c1, c2 = fcscumulants_recursive(H, J, mJ, 2, ρss, nu)
 ```
 
-## Extensions
-For the future,
+You can also pass a vectorised Liouvillian `L` directly —
+`fcscumulants_recursive(L, mJ, nC, ρss, nu)` — with no quantum framework loaded. See the
+[Quickstart](https://marcelojbp.github.io/QuantumFCS.jl/dev/quickstart/) and
+[Examples](https://marcelojbp.github.io/QuantumFCS.jl/dev/examples/) for more.
 
-- Non-Markovian dynamics
+## Documentation
+
+- ⚡ [Quickstart](https://marcelojbp.github.io/QuantumFCS.jl/dev/quickstart/) — install and first calculation
+- 📘 [Mathematical Background](https://marcelojbp.github.io/QuantumFCS.jl/dev/math/) — the recursive scheme and Drazin inverse
+- ⚙️ [Drazin solvers](https://marcelojbp.github.io/QuantumFCS.jl/dev/solvers/) — choosing the `:lu` vs `:iterative` backend
+- 📝 [Examples](https://marcelojbp.github.io/QuantumFCS.jl/dev/examples/) — worked models
+- 🧭 [API](https://marcelojbp.github.io/QuantumFCS.jl/dev/api/) — full reference
+
+## Roadmap
+
+Planned extensions:
+
 - Time-dependent systems
+- Non-Markovian dynamics
 - Computing the FCS distribution numerically
-- Integration with other frameworks, such as `QuantumToolbox.jl`
-- Factorial moments 
+- Factorial moments
+
+## Citation
+
+If you use QuantumFCS.jl in your research, please cite it via
+[`CITATION.bib`](CITATION.bib) / [`CITATION.yaml`](CITATION.yaml). A companion paper with
+applications is in preparation — its reference will be added here once available.

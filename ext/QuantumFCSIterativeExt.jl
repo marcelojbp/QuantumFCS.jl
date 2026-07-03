@@ -37,7 +37,7 @@ that null mode, making `A` nonsingular while never assembling a dense matrix —
 its action via `mul!` is needed, so no fill-in is created. Used as the operator
 passed to GMRES.
 """
-struct GaugeOp{TL,Tρ,TV}
+struct GaugeOp{TL, Tρ, TV}
     L::TL
     ρ::Tρ
     vId::TV
@@ -78,7 +78,7 @@ GMRES converges on the *true* residual rather than a preconditioned surrogate �
 this keeps the stopping criterion honest when `Pl` only approximates `L` up to a
 shift, a low-rank gauge term, or mild parameter drift (see `prepare_drazin_solver`).
 """
-struct IterativeDrazinSolver{TA,TP,Tρ,TV,TW} <: DrazinSolver
+struct IterativeDrazinSolver{TA, TP, Tρ, TV, TW} <: DrazinSolver
     A::TA              # matrix-free GaugeOp
     P::TP              # preconditioner: internal ILU of (L − σI), or an injected Pl
     ρ::Tρ
@@ -120,8 +120,8 @@ Keyword arguments:
 * `sparsify_rtol` — relative threshold for sparsifying each solution.
 """
 function QuantumFCS._prepare_iterative_drazin_solver(
-        L::SparseMatrixCSC{ComplexF64,Int},
-        ρ::SparseVector{ComplexF64,Int},
+        L::SparseMatrixCSC{ComplexF64, Int},
+        ρ::SparseVector{ComplexF64, Int},
         vId::AbstractVector{ComplexF64};
         σ = nothing,
         τ::Float64 = 0.05,
@@ -130,7 +130,8 @@ function QuantumFCS._prepare_iterative_drazin_solver(
         atol::Float64 = 1e-12,
         itmax::Int = 200,
         memory::Int = 30,
-        sparsify_rtol::Float64 = 1e-12)
+        sparsify_rtol::Float64 = 1.0e-12
+    )
 
     if Pl === nothing
         # Auto-scale the shift from the operator magnitude when not supplied. The shift
@@ -153,7 +154,7 @@ function QuantumFCS._prepare_iterative_drazin_solver(
     # Allocate the GMRES basis once and reuse it for every cumulant-order RHS.
     # `memory` is a workspace-construction parameter in Krylov (the Krylov basis
     # size), not a per-solve `gmres!` keyword, so it is fixed here.
-    n  = size(L, 1)
+    n = size(L, 1)
     ws = Krylov.GmresWorkspace(n, n, Vector{ComplexF64}; memory = memory)
 
     return IterativeDrazinSolver(A, P, ρ, vId, ws, rtol, atol, itmax, memory,
@@ -185,7 +186,7 @@ function QuantumFCS.drazin_solve(s::IterativeDrazinSolver, α::AbstractVector)
     end
 
     stats = Krylov.statistics(s.ws)
-    stats.solved || @warn "Iterative Drazin solve did not converge" niter=stats.niter rtol=s.rtol
+    stats.solved || @warn "Iterative Drazin solve did not converge" niter = stats.niter rtol = s.rtol
 
     # Re-impose trace-zero gauge on the solution, then sparsify into a fresh
     # SparseVector (the next solve overwrites `s.ws.x`, so we copy out here).

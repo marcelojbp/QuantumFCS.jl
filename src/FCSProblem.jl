@@ -95,13 +95,16 @@ end
 # Liouvillian: dispatch on the third type parameter (`TL`). When `L` is stored
 # (`TL !== Nothing`) use it directly; when it is absent (`TL === Nothing`) build
 # it from `H`/`J` via the active backend.
-_liouvillian_data(p::LindbladFCS{<:Any,<:Any,Nothing}) = _build_liouvillian(p.H, p.J)
+_liouvillian_data(p::LindbladFCS{<:Any, <:Any, Nothing}) = _build_liouvillian(p.H, p.J)
 _liouvillian_data(p::LindbladFCS) = p.L
 
 # No backend loaded: building L from H/J is impossible. Fail with a clear message.
-_build_liouvillian(H, J) = throw(ArgumentError(
-    "Cannot build a Liouvillian from `H` and `J`: no backend extension is loaded. " *
-    "Load QuantumOptics or QuantumToolbox, or construct the problem with `L` directly."))
+_build_liouvillian(H, J) = throw(
+    ArgumentError(
+        "Cannot build a Liouvillian from `H` and `J`: no backend extension is loaded. " *
+            "Load QuantumOptics or QuantumToolbox, or construct the problem with `L` directly."
+    )
+)
 
 # Plain arrays pass through unchanged; backends override for their operator types.
 _operator_data(x) = x
@@ -123,7 +126,7 @@ problem's fields, after normalizing any backend operators to their underlying
 matrices.
 """
 function fcscumulants_recursive(p::FCSProblem)
-    L  = _liouvillian_data(p)
+    L = _liouvillian_data(p)
     mJ = map(_operator_data, p.mJ)
     ρ  = _state_data(p.rho_ss)
     o  = _solver_opts(p)

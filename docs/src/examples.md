@@ -179,3 +179,8 @@ First cumulant (mean photon flux): -0.02104572040194588
 Second cumulant (variance): 0.012890993774510551
 Third cumulant (skewness): 0.011185533737017767
 ```
+
+## Applications from the paper (coming soon)
+
+A companion paper with worked applications of `QuantumFCS.jl` is in preparation. Its
+examples will be added here as runnable notebooks/scripts once the manuscript is public.

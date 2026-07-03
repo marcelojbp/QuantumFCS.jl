@@ -1,3 +1,7 @@
+using QuantumFCS
+using QuantumToolbox
+using Test
+
 @testset "FCSProblem (QuantumToolbox backend)" begin
     # Same quantum-dot heat engine, expressed with QuantumToolbox QuantumObjects,
     # to exercise the QuantumToolbox extension hooks.
@@ -20,11 +24,11 @@
 
     p = LindbladFCS(; H = H, J = J, mJ = mJ, rho_ss = ρss, nu = nu, nC = 2)
     c1, c2 = QuantumFCS.fcscumulants_recursive(p)
-    @test c1 ≈ c1_analytical atol = 1e-10
-    @test c2 ≈ c2_analytical atol = 1e-10
-    @test (@inferred QuantumFCS.fcscumulants_recursive(p)) ≈ [c1_analytical, c2_analytical] atol = 1e-10
+    @test c1 ≈ c1_analytical atol = 1.0e-10
+    @test c2 ≈ c2_analytical atol = 1.0e-10
+    @test (@inferred QuantumFCS.fcscumulants_recursive(p)) ≈ [c1_analytical, c2_analytical] atol = 1.0e-10
 
     # Convenience constructor.
     p2 = LindbladFCS(H, J; mJ = mJ, rho_ss = ρss, nu = nu, nC = 2)
-    @test QuantumFCS.fcscumulants_recursive(p2) ≈ [c1_analytical, c2_analytical] atol = 1e-10
+    @test QuantumFCS.fcscumulants_recursive(p2) ≈ [c1_analytical, c2_analytical] atol = 1.0e-10
 end

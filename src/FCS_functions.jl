@@ -13,6 +13,15 @@ Alternatively, one can provide the Hamiltonian and jump operators instead of `L`
 * `nC`: Number of cumulants to be calculated.
 * `rho_ss`: Steady-state density matrix (sparse or dense, ComplexF64)
 * `nu`: Vector of length `length(mJ)` with weights for each jump.
+
+# Keyword arguments
+* `method`: Drazin-solve backend, `:lu` (default) or `:iterative`.
+* `σ`, `τ`, `rtol`, `itmax`, `memory`: options for the `:iterative` backend
+  (see [`prepare_drazin_solver`](@ref)); ignored by `:lu`.
+* `Pl`: an externally built preconditioner reused by the `:iterative` backend
+  instead of building an ILU internally (see [`prepare_drazin_solver`](@ref)).
+  `nothing` (default) builds the internal preconditioner; ignored by `:lu` and by
+  the dense-Liouvillian method.
 """
 function fcscumulants_recursive(
     L::SparseMatrixCSC{ComplexF64, Int},
@@ -23,6 +32,7 @@ function fcscumulants_recursive(
     method::Symbol = :lu,
     σ = nothing,
     τ::Float64 = 0.05,
+    Pl = nothing,
     rtol::Float64 = 1e-8,
     itmax::Int = 200,
     memory::Int = 30,
@@ -49,10 +59,12 @@ function fcscumulants_recursive(
     # caches a sparse LU (default); :iterative builds a matrix-free preconditioned
     # Krylov solver for large sparse Liouvillians (extension required). LU keeps the
     # established 1e-12 sparsify threshold; iterative uses `rtol` as the Krylov tol.
+    # A supplied `Pl` lets :iterative reuse an externally built preconditioner
+    # (e.g. the ILU from the steady-state solve) instead of building its own.
     solver = prepare_drazin_solver(L, vrho_ss, vId;
         method = method,
         rtol = (method === :lu ? 1e-12 : rtol),
-        σ = σ, τ = τ, itmax = itmax, memory = memory)
+        σ = σ, τ = τ, Pl = Pl, itmax = itmax, memory = memory)
 
     # Outputs
     vI = Vector{Float64}(undef, nC)
@@ -228,7 +240,7 @@ function drazin_solve end
 
 """
     prepare_drazin_solver(L, ρ, vId; method=:lu, rtol=1e-12, σ=nothing, τ=0.05,
-                          itmax=200, memory=30) -> DrazinSolver
+                          Pl=nothing, itmax=200, memory=30) -> DrazinSolver
 
 Build a reusable solver for the (projected) Drazin inverse of the singular
 Liouvillian `L`, given its vectorized steady state `ρ` (right null vector) and
@@ -238,8 +250,16 @@ the vectorized identity / trace functional `vId` (left null vector).
 `method = :iterative` builds a matrix-free, preconditioned Krylov solver suited
 to large sparse Liouvillians where direct-LU fill-in is prohibitive; it requires
 the `QuantumFCSIterativeExt` extension (`using Krylov, IncompleteLU`). Keyword
-arguments `σ`/`τ`/`itmax`/`memory`/`rtol` configure the iterative backend and are
-ignored by the LU backend.
+arguments `σ`/`τ`/`Pl`/`itmax`/`memory`/`rtol` configure the iterative backend and
+are ignored by the LU backend.
+
+`Pl` supplies an externally built preconditioner for the `:iterative` backend to
+reuse instead of building its own shifted ILU — for example the ILU already
+computed for the steady-state solve at the same or a neighbouring parameter point.
+It must support `LinearAlgebra.ldiv!(y, Pl, x)` and `ldiv!(Pl, x)` and approximate
+`L⁻¹` up to a diagonal shift, a low-rank gauge term, and mild parameter drift; it
+is applied on the right so GMRES converges on the true residual. When `Pl` is
+supplied, `σ` and `τ` are ignored.
 """
 function prepare_drazin_solver(L::SparseMatrixCSC{ComplexF64,Int},
                                ρ::SparseVector{ComplexF64,Int},

@@ -33,6 +33,10 @@ extracting the underlying matrices.
 * `σ`, `τ`, `rtol`, `itmax`, `memory`: options for the `:iterative` backend
   (diagonal shift, ILU drop tolerance, Krylov tolerance, iteration cap, and GMRES
   restart memory). Ignored by `:lu`. `σ=nothing` auto-scales the shift from `L`.
+* `Pl`: an externally built preconditioner for the `:iterative` backend to reuse
+  instead of building its own ILU (e.g. the ILU from the steady-state solve). See
+  [`prepare_drazin_solver`](@ref) for the contract it must satisfy. `nothing`
+  (default) builds the internal preconditioner; ignored by `:lu`.
 
 Solve with [`fcscumulants_recursive`](@ref):
 
@@ -42,7 +46,7 @@ Solve with [`fcscumulants_recursive`](@ref):
     # large sparse Liouvillian (needs `using Krylov, IncompleteLU`):
     p = LindbladFCS(; L=L, mJ=[Jc], rho_ss=ρss, nu=[1], nC=3, method=:iterative)
 """
-@kwdef struct LindbladFCS{TH,TJ,TL,TmJ,Tρ,Tν} <: FCSProblem
+@kwdef struct LindbladFCS{TH,TJ,TL,TmJ,Tρ,Tν,TPl} <: FCSProblem
     H::TH      = nothing
     J::TJ      = nothing
     L::TL      = nothing
@@ -53,31 +57,32 @@ Solve with [`fcscumulants_recursive`](@ref):
     method::Symbol             = :lu
     σ::Union{Nothing,Float64}  = nothing
     τ::Float64                 = 0.05
+    Pl::TPl                    = nothing
     rtol::Float64              = 1e-8
     itmax::Int                 = 200
     memory::Int                = 30
 
-    function LindbladFCS{TH,TJ,TL,TmJ,Tρ,Tν}(H, J, L, mJ, rho_ss, nu, nC,
-                                             method, σ, τ, rtol, itmax, memory) where {TH,TJ,TL,TmJ,Tρ,Tν}
+    function LindbladFCS{TH,TJ,TL,TmJ,Tρ,Tν,TPl}(H, J, L, mJ, rho_ss, nu, nC,
+                                                 method, σ, τ, Pl, rtol, itmax, memory) where {TH,TJ,TL,TmJ,Tρ,Tν,TPl}
         if L === nothing && (H === nothing || J === nothing)
             throw(ArgumentError("LindbladFCS requires either `L`, or both `H` and `J`."))
         end
         if length(mJ) != length(nu)
             throw(ArgumentError("Length of mJ ($(length(mJ))) must match length of nu ($(length(nu)))."))
         end
-        return new{TH,TJ,TL,TmJ,Tρ,Tν}(H, J, L, mJ, rho_ss, nu, nC,
-                                       method, σ, τ, rtol, itmax, memory)
+        return new{TH,TJ,TL,TmJ,Tρ,Tν,TPl}(H, J, L, mJ, rho_ss, nu, nC,
+                                           method, σ, τ, Pl, rtol, itmax, memory)
     end
 end
 
 # Non-parametric forwarding constructor: infers the type parameters from the
 # arguments. This is what the `@kwdef`-generated keyword constructor calls.
 function LindbladFCS(H::TH, J::TJ, L::TL, mJ::TmJ, rho_ss::Tρ, nu::Tν, nC::Integer,
-                     method::Symbol, σ::Union{Nothing,Float64}, τ::Real, rtol::Real,
-                     itmax::Integer, memory::Integer) where {TH,TJ,TL,TmJ,Tρ,Tν}
-    return LindbladFCS{TH,TJ,TL,TmJ,Tρ,Tν}(H, J, L, mJ, rho_ss, nu, nC,
-                                           method, σ, Float64(τ), Float64(rtol),
-                                           Int(itmax), Int(memory))
+                     method::Symbol, σ::Union{Nothing,Float64}, τ::Real, Pl::TPl,
+                     rtol::Real, itmax::Integer, memory::Integer) where {TH,TJ,TL,TmJ,Tρ,Tν,TPl}
+    return LindbladFCS{TH,TJ,TL,TmJ,Tρ,Tν,TPl}(H, J, L, mJ, rho_ss, nu, nC,
+                                               method, σ, Float64(τ), Pl, Float64(rtol),
+                                               Int(itmax), Int(memory))
 end
 
 # --- Backend-agnostic data extraction -------------------------------------
@@ -104,9 +109,9 @@ _state_data(x) = x
 
 # Drazin-solver options carried by a problem. The generic fallback keeps the
 # established direct-LU behavior; `LindbladFCS` overrides it with its own fields.
-_solver_opts(::FCSProblem) = (method = :lu, σ = nothing, τ = 0.05,
+_solver_opts(::FCSProblem) = (method = :lu, σ = nothing, τ = 0.05, Pl = nothing,
                               rtol = 1e-8, itmax = 200, memory = 30)
-_solver_opts(p::LindbladFCS) = (method = p.method, σ = p.σ, τ = p.τ,
+_solver_opts(p::LindbladFCS) = (method = p.method, σ = p.σ, τ = p.τ, Pl = p.Pl,
                                 rtol = p.rtol, itmax = p.itmax, memory = p.memory)
 
 """
@@ -123,6 +128,6 @@ function fcscumulants_recursive(p::FCSProblem)
     ρ  = _state_data(p.rho_ss)
     o  = _solver_opts(p)
     return fcscumulants_recursive(L, mJ, p.nC, ρ, p.nu;
-        method = o.method, σ = o.σ, τ = o.τ,
+        method = o.method, σ = o.σ, τ = o.τ, Pl = o.Pl,
         rtol = o.rtol, itmax = o.itmax, memory = o.memory)
 end

@@ -4,10 +4,10 @@ using LinearAlgebra
 using SparseArrays
 
 # Minimal benchmark/problem instance for type inference and profiling
-function demo_instance(dim::Int=6; jumps=2)
+function demo_instance(dim::Int = 6; jumps = 2)
     b = FockBasis(dim)
     a = destroy(b); ad = create(b)
-    H = (ad*a)
+    H = (ad * a)
     J = [a]
     if jumps == 2
         push!(J, ad)
@@ -19,7 +19,7 @@ function demo_instance(dim::Int=6; jumps=2)
     return H, J, mJ, nC, ρss
 end
 
-function run_fcscumulants(dim::Int=6)
+function run_fcscumulants(dim::Int = 6)
     H, J, mJ, nC, ρss = demo_instance(dim)
     return fcscumulants_recursive(H, J, mJ, nC, ρss)
 end

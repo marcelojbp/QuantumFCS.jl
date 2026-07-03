@@ -1,6 +1,26 @@
 # [API](@id api)
 
-```@docs 
+## Computing cumulants
+
+```@docs
 QuantumFCS.fcscumulants_recursive
 QuantumFCS.factorial_cumulants
+```
+
+## Problem types
+
+```@docs
+QuantumFCS.FCSProblem
+QuantumFCS.LindbladFCS
+```
+
+## Drazin inverse helpers
+
+The prepared Drazin solvers used internally are documented on the
+[Drazin solvers](@ref solvers) page. The lower-level building blocks are:
+
+```@docs
+QuantumFCS.drazin
+QuantumFCS.drazin_apply
+QuantumFCS.m_jumps
 ```

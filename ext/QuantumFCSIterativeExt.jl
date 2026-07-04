@@ -63,17 +63,24 @@ Base.:*(G::GaugeOp, x::AbstractVector) = mul!(similar(x, ComplexF64, size(G, 1))
     IterativeDrazinSolver <: DrazinSolver
 
 Prepared iterative Drazin solver: a matrix-free [`GaugeOp`](@ref), a reusable
-shifted-ILU preconditioner, and a single preallocated GMRES workspace.
+preconditioner, and a single preallocated GMRES workspace.
 
 The recursion applies the Drazin inverse to `nC-1` right-hand sides with the *same*
 operator and preconditioner, so the Krylov basis is allocated once (`ws`) and
 reused via the in-place `gmres!` rather than reallocated on every solve. Build it
 with `prepare_drazin_solver(L, ρ, vId; method=:iterative, ...)` and apply it with
 [`drazin_solve`](@ref).
+
+The preconditioner `P` is either built internally as a shifted ILU of `L − σI`
+(`side = :left`, the tested default) or supplied by the caller through the `Pl`
+keyword (`side = :right`). An injected preconditioner is applied on the right so
+GMRES converges on the *true* residual rather than a preconditioned surrogate —
+this keeps the stopping criterion honest when `Pl` only approximates `L` up to a
+shift, a low-rank gauge term, or mild parameter drift (see `prepare_drazin_solver`).
 """
 struct IterativeDrazinSolver{TA, TP, Tρ, TV, TW} <: DrazinSolver
     A::TA              # matrix-free GaugeOp
-    P::TP              # ILU preconditioner of (L − σI)
+    P::TP              # preconditioner: internal ILU of (L − σI), or an injected Pl
     ρ::Tρ
     vId::TV
     ws::TW             # preallocated Krylov.GmresWorkspace, reused across RHS
@@ -82,11 +89,12 @@ struct IterativeDrazinSolver{TA, TP, Tρ, TV, TW} <: DrazinSolver
     itmax::Int
     memory::Int        # GMRES basis size (baked into `ws` at allocation)
     sparsify_rtol::Float64
+    side::Symbol       # preconditioning side: :left (internal ILU) or :right (injected Pl)
 end
 
 """
-    _prepare_iterative_drazin_solver(L, ρ, vId; σ=nothing, τ=0.05, rtol=1e-8,
-                                     atol=1e-12, itmax=200, memory=30,
+    _prepare_iterative_drazin_solver(L, ρ, vId; σ=nothing, τ=0.05, Pl=nothing,
+                                     rtol=1e-8, atol=1e-12, itmax=200, memory=30,
                                      sparsify_rtol=1e-12)
 
 Build an [`IterativeDrazinSolver`](@ref) for the sparse Liouvillian `L`. Backs the
@@ -94,10 +102,19 @@ Build an [`IterativeDrazinSolver`](@ref) for the sparse Liouvillian `L`. Backs t
 catch-all, so it takes over once this extension loads.
 
 Keyword arguments:
-* `σ`   — diagonal shift used only to build the ILU preconditioner of `L − σI`.
-  `nothing` auto-scales it to `0.01·maximum(abs, nonzeros(L))`.
-* `τ`   — ILU drop tolerance: smaller keeps more fill (stronger preconditioner,
-  more memory), larger is sparser/cheaper but may need more GMRES iterations.
+* `Pl`  — an externally built preconditioner to reuse instead of building an ILU
+  here. When supplied, `σ` and `τ` are ignored and the preconditioner is applied
+  on the *right* (see [`IterativeDrazinSolver`](@ref)). `Pl` must support
+  `LinearAlgebra.ldiv!(y, Pl, x)` and `ldiv!(Pl, x)` and approximate `L⁻¹` up to a
+  shift, a low-rank gauge term, and mild parameter drift — e.g. an
+  `IncompleteLU.ILUFactorization` of a nearby Liouvillian. `nothing` (default)
+  builds the internal shifted ILU.
+* `σ`   — diagonal shift used only to build the internal ILU preconditioner of
+  `L − σI`. `nothing` auto-scales it to `0.01·maximum(abs, nonzeros(L))`. Ignored
+  when `Pl` is supplied.
+* `τ`   — internal ILU drop tolerance: smaller keeps more fill (stronger
+  preconditioner, more memory), larger is sparser/cheaper but may need more GMRES
+  iterations. Ignored when `Pl` is supplied.
 * `rtol`/`atol`/`itmax` — GMRES convergence tolerances and iteration cap.
 * `memory` — GMRES Krylov basis size (restart length), fixed at allocation.
 * `sparsify_rtol` — relative threshold for sparsifying each solution.
@@ -108,20 +125,30 @@ function QuantumFCS._prepare_iterative_drazin_solver(
         vId::AbstractVector{ComplexF64};
         σ = nothing,
         τ::Float64 = 0.05,
-        rtol::Float64 = 1.0e-8,
-        atol::Float64 = 1.0e-12,
+        Pl = nothing,
+        rtol::Float64 = 1e-8,
+        atol::Float64 = 1e-12,
         itmax::Int = 200,
         memory::Int = 30,
         sparsify_rtol::Float64 = 1.0e-12
     )
 
-    # Auto-scale the shift from the operator magnitude when not supplied. The shift
-    # only needs to lift the near-zero mode enough for a stable incomplete LU; a
-    # small fraction of the largest entry generalizes across systems.
-    σeff = σ === nothing ? 0.01 * maximum(abs, nonzeros(L)) : Float64(σ)
+    if Pl === nothing
+        # Auto-scale the shift from the operator magnitude when not supplied. The shift
+        # only needs to lift the near-zero mode enough for a stable incomplete LU; a
+        # small fraction of the largest entry generalizes across systems.
+        σeff = σ === nothing ? 0.01 * maximum(abs, nonzeros(L)) : Float64(σ)
 
-    Ls = L - σeff * I                  # sparse, same sparsity pattern as L
-    P = IncompleteLU.ilu(Ls; τ = τ)
+        Ls = L - σeff * I              # sparse, same sparsity pattern as L
+        P    = IncompleteLU.ilu(Ls; τ = τ)
+        side = :left                   # internal ILU closely matches L: left-precondition
+    else
+        # Reuse the caller's preconditioner. It was built for a nearby operator
+        # (different shift / gauge term / parameter point), so precondition on the
+        # right to keep the GMRES stopping test on the true residual.
+        P    = Pl
+        side = :right
+    end
     A = GaugeOp(L, ρ, vId)
 
     # Allocate the GMRES basis once and reuse it for every cumulant-order RHS.
@@ -130,7 +157,8 @@ function QuantumFCS._prepare_iterative_drazin_solver(
     n = size(L, 1)
     ws = Krylov.GmresWorkspace(n, n, Vector{ComplexF64}; memory = memory)
 
-    return IterativeDrazinSolver(A, P, ρ, vId, ws, rtol, atol, itmax, memory, sparsify_rtol)
+    return IterativeDrazinSolver(A, P, ρ, vId, ws, rtol, atol, itmax, memory,
+                                 sparsify_rtol, side)
 end
 
 function QuantumFCS.drazin_solve(s::IterativeDrazinSolver, α::AbstractVector)
@@ -141,12 +169,21 @@ function QuantumFCS.drazin_solve(s::IterativeDrazinSolver, α::AbstractVector)
     # preallocated workspace `s.ws`. `gmres!` zeros the initial guess on entry and
     # leaves `warm_start = false`, so each RHS is solved cleanly with no leftover
     # state — only the Krylov basis is shared, not the solution.
-    Krylov.gmres!(
-        s.ws, s.A, αp;
-        M = s.P, ldiv = true,
-        rtol = s.rtol, atol = s.atol,
-        itmax = s.itmax
-    )
+    #
+    # Preconditioning side (fixed at preparation): an internal ILU closely matches
+    # `L` and is applied on the left (`M`); an injected `Pl` may only approximate
+    # `L` and is applied on the right (`N`), so GMRES stops on the true residual.
+    if s.side === :right
+        Krylov.gmres!(s.ws, s.A, αp;
+            N = s.P, ldiv = true,
+            rtol = s.rtol, atol = s.atol,
+            itmax = s.itmax)
+    else
+        Krylov.gmres!(s.ws, s.A, αp;
+            M = s.P, ldiv = true,
+            rtol = s.rtol, atol = s.atol,
+            itmax = s.itmax)
+    end
 
     stats = Krylov.statistics(s.ws)
     stats.solved || @warn "Iterative Drazin solve did not converge" niter = stats.niter rtol = s.rtol

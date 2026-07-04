@@ -77,11 +77,41 @@ are sensible; reach for these only when convergence or performance needs help:
 
 | Option | Meaning | Guidance |
 |---|---|---|
-| `τ` | ILU drop tolerance | Smaller ⇒ denser preconditioner (fewer GMRES iterations, more memory); larger ⇒ sparser/cheaper but may need more iterations. |
-| `σ` | Diagonal shift for the preconditioner only | `nothing` auto-scales from ``\mathcal{L}``. Increase if the ILU is unstable. Does **not** change the solution, only the preconditioner. |
+| `τ` | ILU drop tolerance | Smaller ⇒ denser preconditioner (fewer GMRES iterations, more memory); larger ⇒ sparser/cheaper but may need more iterations. Ignored when `Pl` is supplied. |
+| `σ` | Diagonal shift for the preconditioner only | `nothing` auto-scales from ``\mathcal{L}``. Increase if the ILU is unstable. Does **not** change the solution, only the preconditioner. Ignored when `Pl` is supplied. |
+| `Pl` | Externally built preconditioner to reuse | Skips the internal ILU build; see [Reusing a preconditioner](@ref reuse-precond) below. |
 | `rtol` | GMRES relative tolerance | Loosen for speed, tighten for accuracy. |
 | `itmax` | GMRES iteration cap | Raise if you see a non-convergence warning. |
 | `memory` | GMRES restart (Krylov basis) size | Larger can improve convergence at higher memory cost. |
+
+### [Reusing a preconditioner](@id reuse-precond)
+
+Building the ILU is the dominant cost of the iterative backend, and it is often
+redundant: the steady state `ρss` is usually obtained by a preconditioned linear
+solve of the *same* Liouvillian, so a suitable ILU already exists by the time the
+cumulants are computed. Pass it as `Pl` to skip the internal build:
+
+```julia
+using Krylov, IncompleteLU
+
+# `Pss` is an ILU of the (shifted) Liouvillian, e.g. the one built for the
+# steady-state solve at this or a neighbouring parameter point.
+cumulants = fcscumulants_recursive(L, mJ, nC, ρss, nu;
+                                   method = :iterative, Pl = Pss)
+```
+
+`Pl` must support `LinearAlgebra.ldiv!(y, Pl, x)` and `ldiv!(Pl, x)` — an
+`IncompleteLU.ILUFactorization` does — and need only approximate ``\mathcal{L}^{-1}``
+up to a diagonal shift, the rank-1 gauge term, and mild parameter drift. Because an
+injected preconditioner may have been built for a *neighbouring* operator, it is
+applied on the **right**, so GMRES converges on the true residual rather than a
+preconditioned surrogate: a genuinely poor `Pl` shows up as extra iterations or a
+non-convergence warning, never as a silently wrong result. When `Pl` is supplied,
+`σ` and `τ` are ignored.
+
+This is the recommended pattern for parameter sweeps — build (or reuse) one ILU per
+neighbourhood of points and feed it to both the steady-state solve and the FCS
+cumulants.
 
 !!! tip "Steady-state accuracy dominates the high cumulants"
     Both backends inherit the accuracy of the steady state `ρss` you pass in. High

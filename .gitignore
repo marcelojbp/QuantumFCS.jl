@@ -4,3 +4,6 @@ src/untracked_notebook.ipynb
 notebooks/benchmark.jl
 notebooks/QuantumTLM_example.ipynb
 /References
+
+# macOS Finder metadata
+.DS_Store

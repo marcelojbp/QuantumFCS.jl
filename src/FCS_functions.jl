@@ -18,7 +18,9 @@ cumulants. Dimensionful heat-current cumulants should be rescaled first.
 """
 function factorial_cumulants(cumulants::AbstractVector{<:Number})
     n = length(cumulants)
-    n == 0 && return Number[]
+    # Typed empty return keeps `_postprocess_cumulants` (and thus
+    # `fcscumulants_recursive`) inferable to a concrete vector type.
+    n == 0 && return empty(cumulants)
 
     stirling = zeros(Int, n, n)
     stirling[1, 1] = 1
@@ -78,6 +80,8 @@ Alternatively, one can provide the Hamiltonian and jump operators instead of `L`
   instead of building an ILU internally (see [`prepare_drazin_solver`](@ref)).
   `nothing` (default) builds the internal preconditioner; ignored by `:lu` and by
   the dense-Liouvillian method.
+* `cumulant_type`: Optional keyword. Use `""` (default) for ordinary cumulants, or
+  `"factorial"` to convert the result with [`factorial_cumulants`](@ref).
 """
 function fcscumulants_recursive(
     L::SparseMatrixCSC{ComplexF64, Int},
@@ -92,6 +96,7 @@ function fcscumulants_recursive(
     rtol::Float64 = 1e-8,
     itmax::Int = 200,
     memory::Int = 30,
+    cumulant_type::AbstractString = "",
 )
     if length(mJ) != length(nu)
         throw(ArgumentError("Length of mJ ($(length(mJ))) must match length of nu ($(length(nu)))."))
@@ -178,6 +183,7 @@ function fcscumulants_recursive(
         rho_ss::Union{SparseMatrixCSC{ComplexF64, Int}, Matrix{ComplexF64}},
         nu::AbstractVector{<:Real};
         method::Symbol = :lu,
+        cumulant_type::AbstractString = "",
         kwargs...,
     )
     # The iterative backend targets large *sparse* Liouvillians; a dense L is by

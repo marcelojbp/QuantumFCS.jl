@@ -10,4 +10,5 @@ using SafeTestsets
 @time @safetestset "FCSProblem (QuantumToolbox)" include("fcsproblem_quantumtoolbox.jl")
 @time @safetestset "QuantumToolbox backend"     include("quantumtoolbox_backend.jl")
 @time @safetestset "Iterative Drazin"           include("iterative_drazin.jl")
+@time @safetestset "Prepared FCS context"       include("prepared_context.jl")
 @time @safetestset "Factorial cumulants"           include("factorial_cumulants.jl")

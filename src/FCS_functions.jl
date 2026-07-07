@@ -110,9 +110,6 @@ function fcscumulants_recursive(
     diag_idx = collect(1:(n + 1):l)
     vId = SparseVector{ComplexF64, Int}(l, diag_idx, fill(1.0 + 0.0im, n))
 
-    # d/dχ n-derivatives ℒ(n)
-    Ln = [m_jumps(mJ; n = k, nu = nu) for k in 1:nC]
-
     # Vectorized steady state, normalized
     vrho_ss = SparseVector(vec(rho_ss ./ tr(rho_ss)))
 
@@ -122,58 +119,17 @@ function fcscumulants_recursive(
     # established 1e-12 sparsify threshold; iterative uses `rtol` as the Krylov tol.
     # A supplied `Pl` lets :iterative reuse an externally built preconditioner
     # (e.g. the ILU from the steady-state solve) instead of building its own.
+    #
+    # To reuse this preparation across *several* observables that share `L` and
+    # `rho_ss`, build a context once with [`prepare_fcs_context`](@ref) instead.
     solver = prepare_drazin_solver(L, vrho_ss, vId;
         method = method,
         rtol = (method === :lu ? 1e-12 : rtol),
         σ = σ, τ = τ, Pl = Pl, itmax = itmax, memory = memory)
 
-    # Outputs
-    vI = Vector{Float64}(undef, nC)
-
-    # First cumulant: I₁ = Re( vId⋅(ℒ(1)*ρ_ss) )
-    vI[1] = real(dot(vId, Ln[1] * vrho_ss))
-
-    # States used in recursion
-    vrho = Vector{SparseVector{ComplexF64, Int}}(undef, nC)
-    vrho[1] = vrho_ss
-
-    # --- Work buffers (reused) ---
-    # dense buffers of length l to avoid repeated allocations
-    tmp = Vector{ComplexF64}(undef, l)        # for Ln[m] * vrho[·]
-    αbuf = zeros(ComplexF64, l)               # accumulates valpha densely
-
-    # main recursion
-    for ncur in 2:nC
-        # Build valpha = Σ_{m=1}^{n-1} binom(n-1,m) * ( vI[m]*vrho[n-m] - Ln[m]*vrho[n-m] )
-        fill!(αbuf, 0)
-        for m in 1:(ncur - 1)
-            c = binomial(ncur - 1, m)
-            # αbuf += c * vI[m] * vrho[n-m]
-            sv = vrho[ncur - m]
-            @inbounds for k in 1:nnz(sv)
-                i = rowvals(sv)[k]
-                αbuf[i] += c * vI[m] * nonzeros(sv)[k]
-            end
-            # tmp = Ln[m] * vrho[n-m]; αbuf -= c * tmp
-            mul!(tmp, Ln[m], sv)             # SparseMatrix * SparseVector -> dense tmp
-            @inbounds @simd for i in eachindex(tmp)
-                αbuf[i] -= c * tmp[i]
-            end
-        end
-
-        # y_n = L^D * valpha  (project+gauge inside the prepared solver), sparse result
-        vrho[ncur] = drazin_solve(solver, αbuf)
-
-        # I_n = Re( Σ_{m=1}^n binom(n,m) * vId⋅(Ln[m] * vrho[n+1-m]) )
-        acc = 0.0
-        for m in 1:ncur
-            mul!(tmp, Ln[m], vrho[ncur + 1 - m])
-            acc += binomial(ncur, m) * real(dot(vId, tmp))
-        end
-        vI[ncur] = acc
-    end
-
-    return _postprocess_cumulants(vI, cumulant_type)
+    # Run the shared recursion with the freshly prepared solver.
+    return _fcscumulants_recursive_prepared(solver, mJ, nC, vrho_ss, vId, nu;
+        cumulant_type = cumulant_type)
 end
 # Dense method
 function fcscumulants_recursive(
@@ -302,6 +258,85 @@ Projects `α` onto range(L), solves, re-imposes the trace-zero gauge, and return
 a sparsified result — identical pre/post-processing to [`drazin_apply`](@ref).
 """
 function drazin_solve end
+
+"""
+    _fcscumulants_recursive_prepared(solver, mJ, nC, vrho_ss, vId, nu; cumulant_type="")
+
+Core zero-frequency cumulant recursion, driven by an **already prepared** Drazin
+`solver` (see [`prepare_drazin_solver`](@ref)).
+
+This is the shared engine behind both the ordinary [`fcscumulants_recursive`](@ref)
+path — which prepares a solver internally for one observable — and the "prepare
+once, evaluate many observables" path exposed through `prepare_fcs_context`. Only
+the observable-dependent data enters here: the monitored jumps `mJ`, their weights
+`nu`, and the requested number of cumulants `nC`. The observable-independent inputs
+`solver`, `vrho_ss` (normalized, vectorized steady state) and `vId` (vectorized
+identity / trace functional) are built once and may be reused across many calls.
+
+Internal helper; not exported.
+"""
+function _fcscumulants_recursive_prepared(
+    solver::DrazinSolver,
+    mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64, Int}},
+    nC::Integer,
+    vrho_ss::SparseVector{ComplexF64, Int},
+    vId::AbstractVector{ComplexF64},
+    nu::AbstractVector{<:Real};
+    cumulant_type::AbstractString = "",
+)
+    l = length(vrho_ss)                       # vectorized length (n²)
+
+    # d/dχ n-derivatives ℒ(n) — the only observable-dependent super-operators.
+    Ln = [m_jumps(mJ; n = k, nu = nu) for k in 1:nC]
+
+    # Outputs
+    vI = Vector{Float64}(undef, nC)
+
+    # First cumulant: I₁ = Re( vId⋅(ℒ(1)*ρ_ss) )
+    vI[1] = real(dot(vId, Ln[1] * vrho_ss))
+
+    # States used in recursion
+    vrho = Vector{SparseVector{ComplexF64, Int}}(undef, nC)
+    vrho[1] = vrho_ss
+
+    # --- Work buffers (reused) ---
+    # dense buffers of length l to avoid repeated allocations
+    tmp = Vector{ComplexF64}(undef, l)        # for Ln[m] * vrho[·]
+    αbuf = zeros(ComplexF64, l)               # accumulates valpha densely
+
+    # main recursion
+    for ncur in 2:nC
+        # Build valpha = Σ_{m=1}^{n-1} binom(n-1,m) * ( vI[m]*vrho[n-m] - Ln[m]*vrho[n-m] )
+        fill!(αbuf, 0)
+        for m in 1:(ncur - 1)
+            c = binomial(ncur - 1, m)
+            # αbuf += c * vI[m] * vrho[n-m]
+            sv = vrho[ncur - m]
+            @inbounds for k in 1:nnz(sv)
+                i = rowvals(sv)[k]
+                αbuf[i] += c * vI[m] * nonzeros(sv)[k]
+            end
+            # tmp = Ln[m] * vrho[n-m]; αbuf -= c * tmp
+            mul!(tmp, Ln[m], sv)             # SparseMatrix * SparseVector -> dense tmp
+            @inbounds @simd for i in eachindex(tmp)
+                αbuf[i] -= c * tmp[i]
+            end
+        end
+
+        # y_n = L^D * valpha  (project+gauge inside the prepared solver), sparse result
+        vrho[ncur] = drazin_solve(solver, αbuf)
+
+        # I_n = Re( Σ_{m=1}^n binom(n,m) * vId⋅(Ln[m] * vrho[n+1-m]) )
+        acc = 0.0
+        for m in 1:ncur
+            mul!(tmp, Ln[m], vrho[ncur + 1 - m])
+            acc += binomial(ncur, m) * real(dot(vId, tmp))
+        end
+        vI[ncur] = acc
+    end
+
+    return _postprocess_cumulants(vI, cumulant_type)
+end
 
 """
     prepare_drazin_solver(L, ρ, vId; method=:lu, rtol=1e-12, σ=nothing, τ=0.05,

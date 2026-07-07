@@ -128,6 +128,46 @@ See [Krylov.jl](https://jso.dev/Krylov.jl/stable/) and
 [IncompleteLU.jl](https://github.com/haampie/IncompleteLU.jl) for details on the
 underlying GMRES and ILU implementations.
 
+## [Reusing a prepared solver across observables](@id prepared-context)
+
+The Drazin solver depends only on the Liouvillian ``\mathcal{L}`` and the steady
+state ``\rho_\text{ss}`` — never on the monitored jumps or their weights, which
+enter only the counting-field super-operators and the recursion's right-hand sides.
+So when several observables share the *same* ``\mathcal{L}`` and ``\rho_\text{ss}``
+— hot and cold heat currents, left and right particle currents, several output
+channels of a multi-terminal device, or different weight choices for one jump set —
+the expensive solver preparation (the sparse LU factorization, or the shifted-ILU
+build) need only be done **once**.
+
+A plain [`LindbladFCS`](@ref) problem prepares its solver internally for a single
+observable, so evaluating ``k`` observables that way repeats that preparation ``k``
+times. [`prepare_fcs_context`](@ref) instead builds the invariant data once, into a
+[`PreparedLindbladFCS`](@ref), and reuses it for every observable:
+
+```julia
+ctx = prepare_fcs_context(; L = L, rho_ss = ρss, method = :lu)   # prepares the solver once
+
+hot  = fcscumulants_recursive(ctx; mJ = mJ_hot,  nu = nu_hot,  nC = 2)
+cold = fcscumulants_recursive(ctx; mJ = mJ_cold, nu = nu_cold, nC = 2)
+```
+
+The context accepts the same inputs as `LindbladFCS`: pass a prebuilt Liouvillian
+`L`, or a Hamiltonian `H` and jump operators `J`; `L`/`H`/`J`/`rho_ss` may be plain
+arrays or backend operators (`QuantumOptics`, `QuantumToolbox`). It is
+**backend-generic** — the same `method`, `σ`, `τ`, `Pl`, `rtol`, `itmax`, and
+`memory` keywords select and tune the `:lu` or `:iterative` solve, and configure the
+one-time preparation:
+
+```julia
+using Krylov, IncompleteLU   # for method = :iterative
+
+ctx = prepare_fcs_context(; H = H, J = J, rho_ss = ρss, method = :iterative, Pl = Pss)
+```
+
+The result is numerically identical to preparing the solver anew for each observable
+(the reuse changes only the cost, never the answer). This is the recommended setup
+whenever many monitored observables are computed on one Liouvillian and steady state.
+
 ## API
 
 ```@docs
@@ -135,3 +175,7 @@ QuantumFCS.prepare_drazin_solver
 QuantumFCS.drazin_solve
 QuantumFCS.DrazinSolver
 ```
+
+The context object and its constructor for the workflow above,
+[`prepare_fcs_context`](@ref) and [`PreparedLindbladFCS`](@ref), are documented with
+the other problem types on the [API](@ref api) page.

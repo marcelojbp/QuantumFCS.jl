@@ -12,6 +12,8 @@ QuantumFCS.factorial_cumulants
 ```@docs
 QuantumFCS.FCSProblem
 QuantumFCS.LindbladFCS
+QuantumFCS.PreparedLindbladFCS
+QuantumFCS.prepare_fcs_context
 ```
 
 ## Drazin inverse helpers

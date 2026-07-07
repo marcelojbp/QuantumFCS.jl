@@ -134,3 +134,159 @@ function fcscumulants_recursive(p::FCSProblem)
         method = o.method, σ = o.σ, τ = o.τ, Pl = o.Pl,
         rtol = o.rtol, itmax = o.itmax, memory = o.memory)
 end
+
+# ============================================================================
+#  Prepared FCS context — "prepare once, evaluate many observables"
+# ============================================================================
+#
+# The Drazin solver depends only on the Liouvillian and steady state, never on the
+# monitored jumps or weights. When several observables share the same `L` and
+# `rho_ss` (hot/cold currents, several channels, different weight choices, ...),
+# preparing the solver once and reusing it avoids repeating the expensive
+# factorization / preconditioner build. A `PreparedLindbladFCS` holds that
+# invariant data; each observable is then evaluated with a lightweight call.
+
+"""
+    PreparedLindbladFCS
+
+A reusable full-counting-statistics *context*: the observable-independent data for
+a fixed Liouvillian and steady state, with a Drazin solver prepared **once**.
+
+Build it with [`prepare_fcs_context`](@ref) and evaluate any number of observables
+that share the same `L` and `rho_ss` with
+
+    fcscumulants_recursive(ctx; mJ, nu, nC=2)
+
+Because the monitored jumps `mJ` and weights `nu` enter only the counting-field
+super-operators and the recursion's right-hand sides — never the Drazin linear
+algebra — a single prepared solver serves every observable, so the expensive
+preparation (sparse LU factorization, or shifted-ILU build for the iterative
+backend) is done only once.
+
+This complements [`LindbladFCS`](@ref): use `LindbladFCS` for a single observable,
+and a `PreparedLindbladFCS` context when many observables share one Liouvillian and
+steady state.
+
+# Fields
+* `L`: the (sparse `ComplexF64`) vectorized Liouvillian.
+* `rho_ss`: the (sparse `ComplexF64`) steady-state density matrix, kept for
+  introspection and dimension checks.
+* `vrho_ss`: the normalized, vectorized steady state (right null vector).
+* `vId`: the vectorized identity / trace functional (left null vector).
+* `solver`: the prepared [`DrazinSolver`](@ref) reused across observables.
+"""
+struct PreparedLindbladFCS{TL, Tρ, Tvρ, TvId, TS}
+    L::TL
+    rho_ss::Tρ
+    vrho_ss::Tvρ
+    vId::TvId
+    solver::TS
+end
+
+"""
+    prepare_fcs_context(; H=nothing, J=nothing, L=nothing, rho_ss,
+                        method=:lu, σ=nothing, τ=0.05, Pl=nothing,
+                        rtol=1e-8, itmax=200, memory=30) -> PreparedLindbladFCS
+
+Prepare a reusable [`PreparedLindbladFCS`](@ref) context for computing many
+full-counting-statistics observables that share the same Liouvillian and steady
+state.
+
+Supply either a (vectorized) Liouvillian `L`, or both a Hamiltonian `H` and jump
+operators `J` (built into `L` by the active backend). `L`/`H`/`J`/`rho_ss` may be
+plain dense/sparse `ComplexF64` arrays or backend operators
+(`QuantumOptics.Operator`, `QuantumToolbox.QuantumObject`); the relevant package
+extension extracts the underlying matrices. The Drazin solver is prepared once here
+and then reused by every call to `fcscumulants_recursive(ctx; mJ, nu, nC)`.
+
+The solver-backend keywords are identical to those of [`LindbladFCS`](@ref) /
+[`fcscumulants_recursive`](@ref) and configure this one-time preparation:
+
+* `method`: `:lu` (default) or `:iterative` (needs the `QuantumFCSIterativeExt`
+  extension, `using Krylov, IncompleteLU`).
+* `σ`, `τ`, `Pl`, `rtol`, `itmax`, `memory`: options for the `:iterative` backend,
+  forwarded to [`prepare_drazin_solver`](@ref); ignored by `:lu`. `Pl` supplies an
+  externally built preconditioner for the iterative backend to reuse.
+
+# Example
+```julia
+ctx  = prepare_fcs_context(; L = L, rho_ss = ρss, method = :lu)   # prepares LU once
+hot  = fcscumulants_recursive(ctx; mJ = mJ_hot,  nu = nu_hot,  nC = 2)
+cold = fcscumulants_recursive(ctx; mJ = mJ_cold, nu = nu_cold, nC = 2)
+```
+"""
+function prepare_fcs_context(;
+        H = nothing, J = nothing, L = nothing, rho_ss,
+        method::Symbol = :lu,
+        σ::Union{Nothing, Float64} = nothing,
+        τ::Float64 = 0.05,
+        Pl = nothing,
+        rtol::Float64 = 1e-8,
+        itmax::Int = 200,
+        memory::Int = 30,
+    )
+    if L === nothing && (H === nothing || J === nothing)
+        throw(ArgumentError("prepare_fcs_context requires either `L`, or both `H` and `J`."))
+    end
+
+    # Normalize to the sparse ComplexF64 forms the core engine expects. A dense L
+    # is sparsified so a single prepared-solver path serves both cases (reuse
+    # matters for the larger, sparse problems anyway).
+    Ldata = L === nothing ? _build_liouvillian(H, J) : L
+    Lsp = SparseMatrixCSC{ComplexF64, Int}(Ldata)
+    ρsp = SparseMatrixCSC{ComplexF64, Int}(_state_data(rho_ss))
+
+    n = size(ρsp, 1)              # matrix side
+    l = n * n                     # vectorized length
+    size(Lsp, 1) == l && size(Lsp, 2) == l || throw(
+        DimensionMismatch(
+            "Liouvillian is $(size(Lsp)); expected ($l, $l) for a $n×$n steady state."
+        )
+    )
+
+    # Vectorized identity (diagonal entries of an n×n identity under vec) and the
+    # normalized, vectorized steady state — the two null vectors of `L`.
+    diag_idx = collect(1:(n + 1):l)
+    vId = SparseVector{ComplexF64, Int}(l, diag_idx, fill(1.0 + 0.0im, n))
+    vrho_ss = SparseVector(vec(ρsp ./ tr(ρsp)))
+
+    solver = prepare_drazin_solver(Lsp, vrho_ss, vId;
+        method = method,
+        rtol = (method === :lu ? 1e-12 : rtol),
+        σ = σ, τ = τ, Pl = Pl, itmax = itmax, memory = memory)
+
+    return PreparedLindbladFCS(Lsp, ρsp, vrho_ss, vId, solver)
+end
+
+"""
+    fcscumulants_recursive(ctx::PreparedLindbladFCS; mJ, nu, nC=2, cumulant_type="")
+
+Evaluate a full-counting-statistics observable on a prepared context, reusing its
+Drazin solver. Returns the first `nC` zero-frequency cumulants.
+
+`mJ` are the monitored jump operators/matrices (backend operators are accepted and
+normalized) and `nu` their weights (`length(nu) == length(mJ)`). Each jump must be
+`n×n`, where `n` is the side of the context's steady state. See
+[`prepare_fcs_context`](@ref) for the "prepare once, evaluate many observables"
+workflow and [`fcscumulants_recursive`](@ref) for `cumulant_type`.
+"""
+function fcscumulants_recursive(ctx::PreparedLindbladFCS;
+        mJ, nu, nC::Integer = 2, cumulant_type::AbstractString = "")
+    if length(mJ) != length(nu)
+        throw(ArgumentError("Length of mJ ($(length(mJ))) must match length of nu ($(length(nu)))."))
+    end
+    n = size(ctx.rho_ss, 1)
+    mJd = SparseMatrixCSC{ComplexF64, Int}[
+        SparseMatrixCSC{ComplexF64, Int}(_operator_data(m)) for m in mJ
+    ]
+    for (k, m) in enumerate(mJd)
+        size(m) == (n, n) || throw(
+            DimensionMismatch(
+                "mJ[$k] has size $(size(m)); expected ($n, $n) to match the prepared " *
+                    "context (steady state is $n×$n)."
+            )
+        )
+    end
+    return _fcscumulants_recursive_prepared(ctx.solver, mJd, nC, ctx.vrho_ss, ctx.vId, nu;
+        cumulant_type = cumulant_type)
+end

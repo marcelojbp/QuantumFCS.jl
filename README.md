@@ -89,7 +89,6 @@ Planned extensions:
 - Time-dependent systems
 - Non-Markovian dynamics
 - Computing the FCS distribution numerically
-- Factorial moments
 
 ## Citation
 

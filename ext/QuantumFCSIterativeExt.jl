@@ -195,4 +195,69 @@ function QuantumFCS.drazin_solve(s::IterativeDrazinSolver, α::AbstractVector)
     return _drazin_sparsify(y; rtol = s.sparsify_rtol)
 end
 
+# ============================================================================
+#  Trace-constrained steady state (iterative backend)
+# ============================================================================
+#
+# Provides the iterative half of the package-level steady-state API. The numerics
+# reproduce the application helpers: the shifted-ILU preconditioner of the
+# trace-constrained matrix, and the GMRES call (left-preconditioned, `ldiv=true`,
+# memory 60, rtol 1e-10, atol 1e-14). The resulting preconditioner is returned so it
+# can be reused by the FCS Drazin backend (its main purpose).
+
+"""
+    shifted_ilu_preconditioner(A::SparseMatrixCSC{ComplexF64,Int};
+                               τ = 1e-3, shift_factor = 1e-6, shift = nothing)
+
+Incomplete-LU preconditioner of the shifted trace-constrained matrix `A + shift·I`.
+See the core [`shifted_ilu_preconditioner`](@ref) for the shift convention.
+"""
+function QuantumFCS.shifted_ilu_preconditioner(
+        A::SparseMatrixCSC{ComplexF64, Int};
+        τ::Float64 = 1.0e-3, shift_factor::Float64 = 1.0e-6, shift = nothing
+    )
+    σ = shift === nothing ?
+        shift_factor * max(real(norm(A, 1) / size(A, 1)), eps(Float64)) :
+        Float64(shift)
+    return IncompleteLU.ilu(A + σ * I; τ = τ)
+end
+
+function QuantumFCS._trace_constrained_steadystate_iterative(
+        sys::QuantumFCS.TraceConstrainedSystem;
+        Pl = nothing, u0 = nothing,
+        τ::Float64 = 1.0e-3, shift_factor::Float64 = 1.0e-6, shift = nothing,
+        rtol::Float64 = 1.0e-10, atol::Float64 = 1.0e-14,
+        itmax::Int = 200, memory::Int = 60
+    )
+    A = sys.A
+    b = sys.b
+
+    # Build the preconditioner unless the caller supplies one to reuse.
+    ilu_seconds = 0.0
+    if Pl === nothing
+        t0 = time_ns()
+        Pl = QuantumFCS.shifted_ilu_preconditioner(A;
+            τ = τ, shift_factor = shift_factor, shift = shift)
+        ilu_seconds = (time_ns() - t0) / 1.0e9
+    end
+
+    # Left-preconditioned GMRES, optionally warm-started from `u0` (continuation).
+    t1 = time_ns()
+    x, stats = u0 === nothing ?
+        Krylov.gmres(A, b; M = Pl, ldiv = true, memory = memory,
+            rtol = rtol, atol = atol, itmax = itmax) :
+        Krylov.gmres(A, b, u0; M = Pl, ldiv = true, memory = memory,
+            rtol = rtol, atol = atol, itmax = itmax)
+    gmres_seconds = (time_ns() - t1) / 1.0e9
+
+    stats.solved || @warn "Trace-constrained steady-state GMRES did not converge" niter = stats.niter rtol = rtol
+
+    residual = norm(A * x - b)
+    relative_residual = residual / norm(b)
+    return QuantumFCS._finalize_steadystate(sys.L, x; Pl = Pl,
+        converged = stats.solved, iterations = stats.niter,
+        residual = residual, relative_residual = relative_residual,
+        ilu_seconds = ilu_seconds, gmres_seconds = gmres_seconds)
+end
+
 end # module

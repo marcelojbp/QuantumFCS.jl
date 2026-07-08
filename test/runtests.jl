@@ -11,4 +11,5 @@ using SafeTestsets
 @time @safetestset "QuantumToolbox backend"     include("quantumtoolbox_backend.jl")
 @time @safetestset "Iterative Drazin"           include("iterative_drazin.jl")
 @time @safetestset "Prepared FCS context"       include("prepared_context.jl")
+@time @safetestset "Trace-constrained steady state" include("trace_constrained_steadystate.jl")
 @time @safetestset "Factorial cumulants"           include("factorial_cumulants.jl")

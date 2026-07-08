@@ -16,6 +16,20 @@ QuantumFCS.PreparedLindbladFCS
 QuantumFCS.prepare_fcs_context
 ```
 
+## Steady state
+
+Package-level helpers to solve for the trace-constrained steady state and reuse the
+preconditioner built for that solve in the iterative FCS backend (see
+[Preparing the steady state for iterative FCS](@ref steady-state-prep)):
+
+```@docs
+QuantumFCS.trace_constrained_steadystate
+QuantumFCS.TraceConstrainedSteadyState
+QuantumFCS.trace_constrained_system
+QuantumFCS.TraceConstrainedSystem
+QuantumFCS.shifted_ilu_preconditioner
+```
+
 ## Drazin inverse helpers
 
 The prepared Drazin solvers used internally are documented on the

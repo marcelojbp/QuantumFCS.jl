@@ -128,6 +128,46 @@ See [Krylov.jl](https://jso.dev/Krylov.jl/stable/) and
 [IncompleteLU.jl](https://github.com/haampie/IncompleteLU.jl) for details on the
 underlying GMRES and ILU implementations.
 
+## [Preparing the steady state for iterative FCS](@id steady-state-prep)
+
+The [Reusing a preconditioner](@ref reuse-precond) pattern above assumes you already
+have a suitable ILU in hand. [`trace_constrained_steadystate`](@ref) is the
+package-level helper that produces one: it solves for the steady state *and* returns
+the preconditioner it built, so the two feed straight into the FCS cumulants without
+a second ILU build.
+
+The Liouvillian ``\mathcal{L}`` is singular (its kernel is the steady state), so the
+steady state is found from the **trace-constrained** system ``A\,\vec\rho = b``, where
+the redundant first equation is replaced by the normalization ``\mathrm{tr}\,\rho = 1``.
+`trace_constrained_steadystate` builds that system, builds a shifted-ILU
+preconditioner, solves it with GMRES, and returns a lean
+[`TraceConstrainedSteadyState`](@ref):
+
+```julia
+using Krylov, IncompleteLU   # for method = :iterative
+using QuantumFCS
+
+ss = trace_constrained_steadystate(L; method = :iterative)   # solves for ρss and Pl
+
+ctx = prepare_fcs_context(ss; method = :iterative)           # reuses ss.Pl — no rebuild
+hot  = fcscumulants_recursive(ctx; mJ = mJ_hot,  nu = nu_hot,  nC = 2)
+cold = fcscumulants_recursive(ctx; mJ = mJ_cold, nu = nu_cold, nC = 2)
+```
+
+`ss.rho_ss` is a hermitianized, trace-normalized sparse matrix; `ss.Pl` is the
+steady-state preconditioner; and `ss.stats` carries scalar diagnostics (convergence,
+iterations, residuals, trace/hermiticity errors, ILU/GMRES timings). The steady-state
+`Pl` was built for the trace-constrained matrix rather than ``\mathcal{L}`` itself, so
+the FCS backend applies it on the **right** (as with any injected `Pl`), keeping the
+GMRES stopping test on the true residual.
+
+`method = :lu` gives a direct-solve baseline (`A \ b`, `Pl = nothing`) for small and
+medium systems; `method = :iterative` requires the `QuantumFCSIterativeExt` extension.
+Both accept a prebuilt Liouvillian `L`, a Hamiltonian/jumps pair `H, J`, or a
+prebuilt [`TraceConstrainedSystem`](@ref) — the last enables warm-started continuation
+across a parameter sweep by reusing one system and preconditioner (`Pl`, `u0`) over
+neighbouring points.
+
 ## [Reusing a prepared solver across observables](@id prepared-context)
 
 The Drazin solver depends only on the Liouvillian ``\mathcal{L}`` and the steady

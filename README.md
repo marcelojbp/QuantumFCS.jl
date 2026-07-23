@@ -11,7 +11,8 @@
 ## Description
 
 **QuantumFCS.jl** provides tools to study **Full Counting Statistics** (FCS) of quantum transport and quantum optics models based on Lindblad master equations. 
-It implements a recursive method in which the $n+1$-th cumulant is computed using the $n$-th cumulant and the application of the Drazin inverse of the Liouvillian.
+It implements a recursive method that generates current cumulants order by order
+through repeated applications of the Drazin inverse of the Liouvillian.
 
 - The package follows the approach introduced in [Flindt et al., Phys. Rev. B 82, 155407 (2010)](https://arxiv.org/abs/1002.4506), focusing on Markovian dynamics.  
 - It is designed for efficient numerical calculations using sparse or dense linear algebra.
@@ -30,6 +31,10 @@ It implements a recursive method in which the $n+1$-th cumulant is computed usin
   [`QuantumToolbox.jl`](https://qutip.org/QuantumToolbox.jl/)** — the relevant extension
   loads automatically. No framework is required; build your Liouvillian however you like.
 - A **`LindbladFCS`** problem type to bundle a problem together with its solver options.
+- A **prepared-context workflow** (`prepare_fcs_context`) for reusing solver setup
+  across several currents of the same Liouvillian and steady state.
+- A **trace-constrained steady-state helper** for sparse iterative workflows, with
+  reusable preconditioner data for the FCS solve.
 
 *(See the [API docs](https://marcelojbp.github.io/QuantumFCS.jl) for the full list.)*
 
@@ -43,8 +48,8 @@ Pkg.add("QuantumFCS")
 ## Quickstart example
 
 A self-contained example: a single quantum dot coupled to a hot and a cold reservoir,
-built with `QuantumOptics.jl`. We monitor electrons entering the cold reservoir and
-compute the first two cumulants of the current.
+built with `QuantumOptics.jl`. We monitor the cold-reservoir loss channel, assign
+it weight `+1`, and compute the first two cumulants of that current.
 
 ```julia
 using QuantumOptics
@@ -77,7 +82,7 @@ You can also pass a vectorised Liouvillian `L` directly —
 ## Documentation
 
 - ⚡ [Quickstart](https://marcelojbp.github.io/QuantumFCS.jl/dev/quickstart/) — install and first calculation
-- 📘 [Mathematical Background](https://marcelojbp.github.io/QuantumFCS.jl/dev/math/) — the recursive scheme and Drazin inverse
+- 📘 [Mathematical Background](https://marcelojbp.github.io/QuantumFCS.jl/dev/math/) — monitored jumps, weights, tilted Liouvillians, and the recursive scheme
 - ⚙️ [Drazin solvers](https://marcelojbp.github.io/QuantumFCS.jl/dev/solvers/) — choosing the `:lu` vs `:iterative` backend
 - 📝 [Examples](https://marcelojbp.github.io/QuantumFCS.jl/dev/examples/) — worked models
 - 🧭 [API](https://marcelojbp.github.io/QuantumFCS.jl/dev/api/) — full reference

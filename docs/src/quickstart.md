@@ -1,6 +1,8 @@
 # [Quickstart](@id quickstart)
 
-This package provides tools to compute full-counting-statistics cumulants from a Liouvillian.
+This package computes full-counting-statistics cumulants from Lindblad dynamics.
+A model is defined by a Hamiltonian and jump operators, or by a preassembled
+Liouvillian; a current is defined by monitored jumps `mJ` and weights `nu`.
 
 ## Installation
 To install the package, in the Julia REPL, 
@@ -11,7 +13,10 @@ Pkg.add("QuantumFCS")
 
 ## Quickstart example
 
-We model a quantum dot heat engine as a single mode coupled to two reservoirs (hot and cold) in the large bias limit ($n_c = 0,~ n_h = 1$).
+We model a quantum dot heat engine as a single mode coupled to two reservoirs
+(hot and cold) in the large bias limit ($n_c = 0,~ n_h = 1$). We monitor the
+cold-reservoir loss channel and assign it weight `+1`, so the first cumulant is
+positive for this chosen current orientation.
 
 ```julia
 using QuantumOptics 
@@ -32,9 +37,9 @@ Jhgain = sqrt(κh) * d_dag;           # Jumps from the hot reservoir
 J = [Jcloss, Jhgain];
 # Steady state
 ρss = steadystate.iterative(H, J)
-# Weight vector 
+# Weight vector: +1 for each monitored cold-reservoir jump
 nu = [1];
-# Monitored jump operator (particles entering the cold reservoir)
+# Monitored jump operator
 mJ = [Jcloss];
 # Calculating the first two cumulants
 c1, c2 = fcscumulants_recursive(H, J, mJ, 2, ρss, nu);
@@ -67,4 +72,5 @@ See the [Examples](@ref examples) for a full manual Liouvillian construction.
   `fcscumulants_recursive(...; method = :iterative)` — see [Drazin solvers](@ref solvers).
 - To bundle a problem with its solver options, use the [`LindbladFCS`](@ref) problem type
   and call `fcscumulants_recursive(problem)`.
-
+- To reuse solver setup across several currents of the same system, build a
+  [`PreparedLindbladFCS`](@ref) context with [`prepare_fcs_context`](@ref).

@@ -93,10 +93,12 @@ function trace_constrained_system(L; weight = nothing)
 
     l = size(Ldata, 1)
     size(Ldata, 2) == l || throw(
-        DimensionMismatch("Liouvillian must be square; got $(size(Ldata))."))
+        DimensionMismatch("Liouvillian must be square; got $(size(Ldata)).")
+    )
     n = isqrt(l)
     n * n == l || throw(
-        DimensionMismatch("Liouvillian side $l is not a perfect square (n²)."))
+        DimensionMismatch("Liouvillian side $l is not a perfect square (n²).")
+    )
 
     w = weight === nothing ? norm(Ldata, 1) / length(Ldata) : Float64(weight)
     wc = ComplexF64(w)
@@ -182,47 +184,58 @@ Iterative keyword arguments (ignored by `:lu`):
 Pass the low-level `sys::TraceConstrainedSystem` form to reuse a prebuilt system and
 preconditioner across a continuation sweep without rebuilding either.
 """
-function trace_constrained_steadystate(sys::TraceConstrainedSystem;
-        method::Symbol = :iterative, kwargs...)
+function trace_constrained_steadystate(
+        sys::TraceConstrainedSystem;
+        method::Symbol = :iterative, kwargs...
+    )
     if method === :lu
         return _trace_constrained_steadystate_lu(sys)
     elseif method === :iterative
         return _trace_constrained_steadystate_iterative(sys; kwargs...)
     else
-        throw(ArgumentError(
-            "Unknown steady-state method :$(method) (expected :lu or :iterative)."))
+        throw(
+            ArgumentError(
+                "Unknown steady-state method :$(method) (expected :lu or :iterative)."
+            )
+        )
     end
 end
 
 function trace_constrained_steadystate(L; weight = nothing, kwargs...)
     return trace_constrained_steadystate(
-        trace_constrained_system(L; weight = weight); kwargs...)
+        trace_constrained_system(L; weight = weight); kwargs...
+    )
 end
 
 function trace_constrained_steadystate(H, J; weight = nothing, kwargs...)
     return trace_constrained_steadystate(
-        trace_constrained_system(H, J; weight = weight); kwargs...)
+        trace_constrained_system(H, J; weight = weight); kwargs...
+    )
 end
 
 # Direct sparse solve (no weak deps needed). Fast, exact baseline.
 function _trace_constrained_steadystate_lu(sys::TraceConstrainedSystem)
     t0 = time_ns()
     ρvec = sys.A \ sys.b
-    solve_seconds = (time_ns() - t0) / 1e9
+    solve_seconds = (time_ns() - t0) / 1.0e9
 
     residual = norm(sys.A * ρvec - sys.b)
     relative_residual = residual / norm(sys.b)
-    return _finalize_steadystate(sys.L, ρvec; Pl = nothing,
-        converged = relative_residual < 1e-8, iterations = 0,
+    return _finalize_steadystate(
+        sys.L, ρvec; Pl = nothing,
+        converged = relative_residual < 1.0e-8, iterations = 0,
         residual = residual, relative_residual = relative_residual,
-        ilu_seconds = 0.0, gmres_seconds = solve_seconds)
+        ilu_seconds = 0.0, gmres_seconds = solve_seconds
+    )
 end
 
 # Shared post-processing: reshape (column-major), hermitianize, trace-normalize,
 # sparsify, and assemble the scalar diagnostics. Used by both backends.
-function _finalize_steadystate(L, ρvec::AbstractVector; Pl, converged::Bool,
+function _finalize_steadystate(
+        L, ρvec::AbstractVector; Pl, converged::Bool,
         iterations::Integer, residual::Real, relative_residual::Real,
-        ilu_seconds::Real, gmres_seconds::Real)
+        ilu_seconds::Real, gmres_seconds::Real
+    )
     n = isqrt(length(ρvec))
     ρ = reshape(collect(ρvec), n, n)
     trace_error = abs(tr(ρ) - 1)
@@ -232,8 +245,10 @@ function _finalize_steadystate(L, ρvec::AbstractVector; Pl, converged::Bool,
     ρh ./= tr(ρh)
     rho_ss = SparseMatrixCSC{ComplexF64, Int}(sparse(ρh))
 
-    stats = (; converged, iterations, residual, relative_residual,
-        trace_error, hermiticity_error, ilu_seconds, gmres_seconds)
+    stats = (;
+        converged, iterations, residual, relative_residual,
+        trace_error, hermiticity_error, ilu_seconds, gmres_seconds,
+    )
     return TraceConstrainedSteadyState(L, rho_ss, Pl, stats)
 end
 
@@ -251,16 +266,19 @@ preconditioner; with `method = :lu` the direct backend is used and `Pl` is ignor
 The steady state is not recomputed. The `σ`/`τ`/`rtol`/`itmax`/`memory` keywords tune
 the FCS Drazin solve exactly as in the keyword [`prepare_fcs_context`](@ref).
 """
-function prepare_fcs_context(ss::TraceConstrainedSteadyState;
+function prepare_fcs_context(
+        ss::TraceConstrainedSteadyState;
         method::Symbol = :iterative,
         σ::Union{Nothing, Float64} = nothing,
         τ::Float64 = 0.05,
-        rtol::Float64 = 1e-8,
+        rtol::Float64 = 1.0e-8,
         itmax::Int = 200,
         memory::Int = 30,
     )
     Pl = method === :iterative ? ss.Pl : nothing
-    return prepare_fcs_context(; L = ss.L, rho_ss = ss.rho_ss,
+    return prepare_fcs_context(;
+        L = ss.L, rho_ss = ss.rho_ss,
         method = method, σ = σ, τ = τ, Pl = Pl,
-        rtol = rtol, itmax = itmax, memory = memory)
+        rtol = rtol, itmax = itmax, memory = memory
+    )
 end

@@ -25,15 +25,15 @@ function factorial_cumulants(cumulants::AbstractVector{<:Number})
     stirling = zeros(Int, n, n)
     stirling[1, 1] = 1
 
-    for m = 2:n
-        for j = 1:m
+    for m in 2:n
+        for j in 1:m
             previous_diagonal = j == 1 ? 0 : stirling[m - 1, j - 1]
             previous_column = j == m ? 0 : stirling[m - 1, j]
             stirling[m, j] = previous_diagonal - (m - 1) * previous_column
         end
     end
 
-    return [sum(stirling[m, j] * cumulants[j] for j = 1:m) for m = 1:n]
+    return [sum(stirling[m, j] * cumulants[j] for j in 1:m) for m in 1:n]
 end
 
 """
@@ -84,20 +84,20 @@ Alternatively, one can provide the Hamiltonian and jump operators instead of `L`
   `"factorial"` to convert the result with [`factorial_cumulants`](@ref).
 """
 function fcscumulants_recursive(
-    L::SparseMatrixCSC{ComplexF64, Int},
-    mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64, Int}},
-    nC::Integer,
-    rho_ss::SparseMatrixCSC{ComplexF64, Int},
-    nu::AbstractVector{<:Real};
-    method::Symbol = :lu,
-    σ = nothing,
-    τ::Float64 = 0.05,
-    Pl = nothing,
-    rtol::Float64 = 1e-8,
-    itmax::Int = 200,
-    memory::Int = 30,
-    cumulant_type::AbstractString = "",
-)
+        L::SparseMatrixCSC{ComplexF64, Int},
+        mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64, Int}},
+        nC::Integer,
+        rho_ss::SparseMatrixCSC{ComplexF64, Int},
+        nu::AbstractVector{<:Real};
+        method::Symbol = :lu,
+        σ = nothing,
+        τ::Float64 = 0.05,
+        Pl = nothing,
+        rtol::Float64 = 1.0e-8,
+        itmax::Int = 200,
+        memory::Int = 30,
+        cumulant_type::AbstractString = "",
+    )
     if length(mJ) != length(nu)
         throw(ArgumentError("Length of mJ ($(length(mJ))) must match length of nu ($(length(nu)))."))
     end
@@ -122,14 +122,18 @@ function fcscumulants_recursive(
     #
     # To reuse this preparation across *several* observables that share `L` and
     # `rho_ss`, build a context once with [`prepare_fcs_context`](@ref) instead.
-    solver = prepare_drazin_solver(L, vrho_ss, vId;
+    solver = prepare_drazin_solver(
+        L, vrho_ss, vId;
         method = method,
-        rtol = (method === :lu ? 1e-12 : rtol),
-        σ = σ, τ = τ, Pl = Pl, itmax = itmax, memory = memory)
+        rtol = (method === :lu ? 1.0e-12 : rtol),
+        σ = σ, τ = τ, Pl = Pl, itmax = itmax, memory = memory
+    )
 
     # Run the shared recursion with the freshly prepared solver.
-    return _fcscumulants_recursive_prepared(solver, mJ, nC, vrho_ss, vId, nu;
-        cumulant_type = cumulant_type)
+    return _fcscumulants_recursive_prepared(
+        solver, mJ, nC, vrho_ss, vId, nu;
+        cumulant_type = cumulant_type
+    )
 end
 # Dense method
 function fcscumulants_recursive(
@@ -276,14 +280,14 @@ identity / trace functional) are built once and may be reused across many calls.
 Internal helper; not exported.
 """
 function _fcscumulants_recursive_prepared(
-    solver::DrazinSolver,
-    mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64, Int}},
-    nC::Integer,
-    vrho_ss::SparseVector{ComplexF64, Int},
-    vId::AbstractVector{ComplexF64},
-    nu::AbstractVector{<:Real};
-    cumulant_type::AbstractString = "",
-)
+        solver::DrazinSolver,
+        mJ::AbstractVector{<:SparseMatrixCSC{ComplexF64, Int}},
+        nC::Integer,
+        vrho_ss::SparseVector{ComplexF64, Int},
+        vId::AbstractVector{ComplexF64},
+        nu::AbstractVector{<:Real};
+        cumulant_type::AbstractString = "",
+    )
     l = length(vrho_ss)                       # vectorized length (n²)
 
     # d/dχ n-derivatives ℒ(n) — the only observable-dependent super-operators.

@@ -12,7 +12,7 @@ using Test
 # package API must reproduce these bit-for-bit, so we build the reference here
 # rather than importing the read-only application code.
 
-function ref_trace_constrained(Ldata::SparseMatrixCSC{ComplexF64,Int}, n::Integer)
+function ref_trace_constrained(Ldata::SparseMatrixCSC{ComplexF64, Int}, n::Integer)
     weight = norm(Ldata, 1) / length(Ldata)         # entrywise 1-norm / n^4
     b = zeros(ComplexF64, n^2)
     b[1] = weight
@@ -25,7 +25,7 @@ function ref_trace_constrained(Ldata::SparseMatrixCSC{ComplexF64,Int}, n::Intege
     return (; A, b, weight)
 end
 
-function ref_shift(A::SparseMatrixCSC{ComplexF64,Int}; shift_factor = 1e-6)
+function ref_shift(A::SparseMatrixCSC{ComplexF64, Int}; shift_factor = 1.0e-6)
     scale = norm(A, 1) / size(A, 1)
     return shift_factor * max(real(scale), eps(Float64))
 end
@@ -43,7 +43,7 @@ end
     Jhgain = sqrt(κh) * d_dag
     Jdot = [Jcloss, Jhgain]
     ρss_dot = steadystate.eigenvector(Hdot, Jdot)
-    Ldot = SparseMatrixCSC{ComplexF64,Int}(liouvillian(Hdot, Jdot).data)
+    Ldot = SparseMatrixCSC{ComplexF64, Int}(liouvillian(Hdot, Jdot).data)
     ndot = size(ρss_dot.data, 1)
 
     c1_analytical = κc * κh / (κc + κh)
@@ -56,7 +56,7 @@ end
     κ = 1.0
     Jcav = [sqrt(κ) * a]
     ρss_cav = steadystate.eigenvector(Hcav, Jcav)
-    Lcav = SparseMatrixCSC{ComplexF64,Int}(liouvillian(Hcav, Jcav).data)
+    Lcav = SparseMatrixCSC{ComplexF64, Int}(liouvillian(Hcav, Jcav).data)
     ncav = size(ρss_cav.data, 1)
 
     @testset "system-build equivalence (matches application formula)" begin
@@ -66,8 +66,10 @@ end
         @test sys.b == r.b
 
         # vId is the column-major vectorized identity (diagonal indices).
-        vId_ref = SparseVector{ComplexF64,Int}(ncav^2, collect(1:(ncav + 1):ncav^2),
-            fill(1.0 + 0.0im, ncav))
+        vId_ref = SparseVector{ComplexF64, Int}(
+            ncav^2, collect(1:(ncav + 1):(ncav^2)),
+            fill(1.0 + 0.0im, ncav)
+        )
         @test sys.vId == vId_ref
 
         # `weight` override is honored.
@@ -84,34 +86,34 @@ end
         sys = trace_constrained_system(Lcav)
         P = shifted_ilu_preconditioner(sys.A)                 # defaults τ=1e-3, shift_factor=1e-6
         shift = ref_shift(sys.A)
-        Pref = IncompleteLU.ilu(sys.A + shift * I; τ = 1e-3)
+        Pref = IncompleteLU.ilu(sys.A + shift * I; τ = 1.0e-3)
 
         # Same incomplete factors ⇒ same preconditioner action.
         x = randn(ComplexF64, ncav^2)
-        @test P \ x ≈ Pref \ x rtol = 1e-12
+        @test P \ x ≈ Pref \ x rtol = 1.0e-12
         @test nnz(P.L) == nnz(Pref.L)
         @test nnz(P.U) == nnz(Pref.U)
 
         # Explicit shift is honored.
-        Pshift = shifted_ilu_preconditioner(sys.A; shift = 1e-4)
-        Pshift_ref = IncompleteLU.ilu(sys.A + 1e-4 * I; τ = 1e-3)
-        @test Pshift \ x ≈ Pshift_ref \ x rtol = 1e-12
+        Pshift = shifted_ilu_preconditioner(sys.A; shift = 1.0e-4)
+        Pshift_ref = IncompleteLU.ilu(sys.A + 1.0e-4 * I; τ = 1.0e-3)
+        @test Pshift \ x ≈ Pshift_ref \ x rtol = 1.0e-12
     end
 
     @testset "method=:lu steady state matches eigenvector" begin
         ss = trace_constrained_steadystate(Ldot; method = :lu)
         @test ss isa TraceConstrainedSteadyState
-        @test ss.rho_ss isa SparseMatrixCSC{ComplexF64,Int}
+        @test ss.rho_ss isa SparseMatrixCSC{ComplexF64, Int}
 
         ρ = Matrix(ss.rho_ss)
-        @test tr(ρ) ≈ 1 atol = 1e-12
-        @test norm(ρ - ρ') < 1e-12                            # hermitian
-        @test ρ ≈ Matrix(ρss_dot.data) rtol = 1e-8           # physical steady state
-        @test norm(Ldot * vec(ρ)) < 1e-9                      # in the kernel of L
+        @test tr(ρ) ≈ 1 atol = 1.0e-12
+        @test norm(ρ - ρ') < 1.0e-12                            # hermitian
+        @test ρ ≈ Matrix(ρss_dot.data) rtol = 1.0e-8           # physical steady state
+        @test norm(Ldot * vec(ρ)) < 1.0e-9                      # in the kernel of L
 
         @test ss.stats.converged
-        @test ss.stats.trace_error < 1e-10
-        @test ss.stats.hermiticity_error < 1e-10
+        @test ss.stats.trace_error < 1.0e-10
+        @test ss.stats.hermiticity_error < 1.0e-10
     end
 
     @testset "method=:iterative steady state + reusable Pl" begin
@@ -120,14 +122,14 @@ end
         @test ss.stats.converged
 
         ρ = Matrix(ss.rho_ss)
-        @test tr(ρ) ≈ 1 atol = 1e-8
-        @test norm(ρ - ρ') < 1e-10
-        @test ρ ≈ Matrix(ρss_cav.data) rtol = 1e-6
-        @test norm(Lcav * vec(ρ)) < 1e-7
+        @test tr(ρ) ≈ 1 atol = 1.0e-8
+        @test norm(ρ - ρ') < 1.0e-10
+        @test ρ ≈ Matrix(ρss_cav.data) rtol = 1.0e-6
+        @test norm(Lcav * vec(ρ)) < 1.0e-7
 
         # Convenience H, J signature agrees.
         ss_hj = trace_constrained_steadystate(Hcav, Jcav; method = :iterative)
-        @test Matrix(ss_hj.rho_ss) ≈ ρ rtol = 1e-6
+        @test Matrix(ss_hj.rho_ss) ≈ ρ rtol = 1.0e-6
     end
 
     @testset "FCS bridge reuses Pl without rebuilding the ILU" begin
@@ -141,15 +143,18 @@ end
         mJ = [sparse((sqrt(κ) * a).data)]
         c_it = fcscumulants_recursive(ctx; mJ = mJ, nu = [1.0], nC = 3)
         c_lu = fcscumulants_recursive(
-            LindbladFCS(Hcav, Jcav; mJ = [sqrt(κ) * a], rho_ss = ρss_cav, nu = [1.0],
-                nC = 3, method = :lu))
-        @test c_it ≈ c_lu rtol = 1e-5
+            LindbladFCS(
+                Hcav, Jcav; mJ = [sqrt(κ) * a], rho_ss = ρss_cav, nu = [1.0],
+                nC = 3, method = :lu
+            )
+        )
+        @test c_it ≈ c_lu rtol = 1.0e-5
 
         # method=:lu bridge ignores Pl and still works.
         ss_lu = trace_constrained_steadystate(Ldot; method = :lu)
         ctx_lu = prepare_fcs_context(ss_lu; method = :lu)
         c = fcscumulants_recursive(ctx_lu; mJ = [sparse(Jcloss.data)], nu = [1], nC = 2)
-        @test c ≈ [c1_analytical, c2_analytical] atol = 1e-10
+        @test c ≈ [c1_analytical, c2_analytical] atol = 1.0e-10
     end
 
     @testset "low-level system overload supports warm start (continuation)" begin
@@ -164,14 +169,14 @@ end
         u0 = vec(Matrix(ss_cold.rho_ss))
         ss_warm = trace_constrained_steadystate(sys; Pl = Pl, u0 = u0)
         @test ss_warm.stats.converged
-        @test Matrix(ss_warm.rho_ss) ≈ Matrix(ss_cold.rho_ss) rtol = 1e-6
+        @test Matrix(ss_warm.rho_ss) ≈ Matrix(ss_cold.rho_ss) rtol = 1.0e-6
     end
 
     @testset "backend acceptance and validation" begin
         # Prebuilt sparse L and QuantumOptics H, J both accepted for :lu.
         ss_L = trace_constrained_steadystate(Ldot; method = :lu)
         ss_HJ = trace_constrained_steadystate(Hdot, Jdot; method = :lu)
-        @test Matrix(ss_L.rho_ss) ≈ Matrix(ss_HJ.rho_ss) rtol = 1e-8
+        @test Matrix(ss_L.rho_ss) ≈ Matrix(ss_HJ.rho_ss) rtol = 1.0e-8
 
         # Non-square (bad) Liouvillian dimension.
         Lbad = sparse(ComplexF64.(reshape(1:12, 3, 4)))

@@ -126,8 +126,8 @@ function QuantumFCS._prepare_iterative_drazin_solver(
         σ = nothing,
         τ::Float64 = 0.05,
         Pl = nothing,
-        rtol::Float64 = 1e-8,
-        atol::Float64 = 1e-12,
+        rtol::Float64 = 1.0e-8,
+        atol::Float64 = 1.0e-12,
         itmax::Int = 200,
         memory::Int = 30,
         sparsify_rtol::Float64 = 1.0e-12
@@ -140,13 +140,13 @@ function QuantumFCS._prepare_iterative_drazin_solver(
         σeff = σ === nothing ? 0.01 * maximum(abs, nonzeros(L)) : Float64(σ)
 
         Ls = L - σeff * I              # sparse, same sparsity pattern as L
-        P    = IncompleteLU.ilu(Ls; τ = τ)
+        P = IncompleteLU.ilu(Ls; τ = τ)
         side = :left                   # internal ILU closely matches L: left-precondition
     else
         # Reuse the caller's preconditioner. It was built for a nearby operator
         # (different shift / gauge term / parameter point), so precondition on the
         # right to keep the GMRES stopping test on the true residual.
-        P    = Pl
+        P = Pl
         side = :right
     end
     A = GaugeOp(L, ρ, vId)
@@ -157,8 +157,10 @@ function QuantumFCS._prepare_iterative_drazin_solver(
     n = size(L, 1)
     ws = Krylov.GmresWorkspace(n, n, Vector{ComplexF64}; memory = memory)
 
-    return IterativeDrazinSolver(A, P, ρ, vId, ws, rtol, atol, itmax, memory,
-                                 sparsify_rtol, side)
+    return IterativeDrazinSolver(
+        A, P, ρ, vId, ws, rtol, atol, itmax, memory,
+        sparsify_rtol, side
+    )
 end
 
 function QuantumFCS.drazin_solve(s::IterativeDrazinSolver, α::AbstractVector)
@@ -174,15 +176,19 @@ function QuantumFCS.drazin_solve(s::IterativeDrazinSolver, α::AbstractVector)
     # `L` and is applied on the left (`M`); an injected `Pl` may only approximate
     # `L` and is applied on the right (`N`), so GMRES stops on the true residual.
     if s.side === :right
-        Krylov.gmres!(s.ws, s.A, αp;
+        Krylov.gmres!(
+            s.ws, s.A, αp;
             N = s.P, ldiv = true,
             rtol = s.rtol, atol = s.atol,
-            itmax = s.itmax)
+            itmax = s.itmax
+        )
     else
-        Krylov.gmres!(s.ws, s.A, αp;
+        Krylov.gmres!(
+            s.ws, s.A, αp;
             M = s.P, ldiv = true,
             rtol = s.rtol, atol = s.atol,
-            itmax = s.itmax)
+            itmax = s.itmax
+        )
     end
 
     stats = Krylov.statistics(s.ws)
@@ -236,28 +242,36 @@ function QuantumFCS._trace_constrained_steadystate_iterative(
     ilu_seconds = 0.0
     if Pl === nothing
         t0 = time_ns()
-        Pl = QuantumFCS.shifted_ilu_preconditioner(A;
-            τ = τ, shift_factor = shift_factor, shift = shift)
+        Pl = QuantumFCS.shifted_ilu_preconditioner(
+            A;
+            τ = τ, shift_factor = shift_factor, shift = shift
+        )
         ilu_seconds = (time_ns() - t0) / 1.0e9
     end
 
     # Left-preconditioned GMRES, optionally warm-started from `u0` (continuation).
     t1 = time_ns()
     x, stats = u0 === nothing ?
-        Krylov.gmres(A, b; M = Pl, ldiv = true, memory = memory,
-            rtol = rtol, atol = atol, itmax = itmax) :
-        Krylov.gmres(A, b, u0; M = Pl, ldiv = true, memory = memory,
-            rtol = rtol, atol = atol, itmax = itmax)
+        Krylov.gmres(
+            A, b; M = Pl, ldiv = true, memory = memory,
+            rtol = rtol, atol = atol, itmax = itmax
+        ) :
+        Krylov.gmres(
+            A, b, u0; M = Pl, ldiv = true, memory = memory,
+            rtol = rtol, atol = atol, itmax = itmax
+        )
     gmres_seconds = (time_ns() - t1) / 1.0e9
 
     stats.solved || @warn "Trace-constrained steady-state GMRES did not converge" niter = stats.niter rtol = rtol
 
     residual = norm(A * x - b)
     relative_residual = residual / norm(b)
-    return QuantumFCS._finalize_steadystate(sys.L, x; Pl = Pl,
+    return QuantumFCS._finalize_steadystate(
+        sys.L, x; Pl = Pl,
         converged = stats.solved, iterations = stats.niter,
         residual = residual, relative_residual = relative_residual,
-        ilu_seconds = ilu_seconds, gmres_seconds = gmres_seconds)
+        ilu_seconds = ilu_seconds, gmres_seconds = gmres_seconds
+    )
 end
 
 end # module

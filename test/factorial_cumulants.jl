@@ -40,7 +40,7 @@ using Test
 
     # Higher orders should be numerically zero. Use an absolute tolerance because
     # these are cancellation checks, and the expected value is exactly zero.
-    @test all(x -> isapprox(x, 0.0; atol = 1e-12), poisson_factorial[2:end])
+    @test all(x -> isapprox(x, 0.0; atol = 1.0e-12), poisson_factorial[2:end])
 
     # For a binomial random variable with N trials and success probability p,
     # the factorial cumulants have the closed form
@@ -61,7 +61,7 @@ using Test
     # Build the closed-form factorial cumulants order by order, then compare the
     # whole vector. This also checks that the output ordering is [f1, f2, ...].
     expected_binomial = [
-        (-1)^(m - 1) * factorial(m - 1) * N * p^m for m = 1:4
+        (-1)^(m - 1) * factorial(m - 1) * N * p^m for m in 1:4
     ]
     @test binomial_factorial ≈ expected_binomial
 end
@@ -101,10 +101,12 @@ end
 
     # The steady state of this two-state rate equation is diagonal: probability
     # κc/(κc+κh) for empty and κh/(κc+κh) for occupied.
-    rho_ss = sparse(ComplexF64[
-        κc / (κc + κh) 0
-        0 κh / (κc + κh)
-    ])
+    rho_ss = sparse(
+        ComplexF64[
+            κc / (κc + κh) 0
+            0 κh / (κc + κh)
+        ]
+    )
 
     # Sparse Liouvillian dispatch: omitting the keyword is the original public
     # call style and must continue to return ordinary cumulants.

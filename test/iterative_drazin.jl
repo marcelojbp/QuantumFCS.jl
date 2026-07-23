@@ -108,18 +108,22 @@ using Test
         mJ = [sqrt(κ) * a]
         nu = [1.0]
 
-        L = SparseMatrixCSC{ComplexF64,Int}(liouvillian(H, J).data)
+        L = SparseMatrixCSC{ComplexF64, Int}(liouvillian(H, J).data)
         σ = 0.01 * maximum(abs, nonzeros(L))
         Pl = IncompleteLU.ilu(L - σ * I; τ = 0.01)
 
         c_lu = QuantumFCS.fcscumulants_recursive(
-            LindbladFCS(H, J; mJ = mJ, rho_ss = ρss, nu = nu, nC = 3, method = :lu))
+            LindbladFCS(H, J; mJ = mJ, rho_ss = ρss, nu = nu, nC = 3, method = :lu)
+        )
 
         @testset "matches :lu with an injected ILU of L" begin
             c_inj = QuantumFCS.fcscumulants_recursive(
-                LindbladFCS(H, J; mJ = mJ, rho_ss = ρss, nu = nu, nC = 3,
-                            method = :iterative, Pl = Pl))
-            @test c_inj ≈ c_lu rtol = 1e-5
+                LindbladFCS(
+                    H, J; mJ = mJ, rho_ss = ρss, nu = nu, nC = 3,
+                    method = :iterative, Pl = Pl
+                )
+            )
+            @test c_inj ≈ c_lu rtol = 1.0e-5
         end
 
         @testset "converges with a stale ILU from a nearby operator" begin
@@ -128,34 +132,39 @@ using Test
             # cumulants of the true system must still be correct — this is the
             # continuation use case (reuse a neighbour's ILU).
             H_other = 0.65 * (a' * a) + 1.2 * (a + a')
-            L_other = SparseMatrixCSC{ComplexF64,Int}(liouvillian(H_other, J).data)
+            L_other = SparseMatrixCSC{ComplexF64, Int}(liouvillian(H_other, J).data)
             σ_other = 0.01 * maximum(abs, nonzeros(L_other))
             Pl_stale = IncompleteLU.ilu(L_other - σ_other * I; τ = 0.01)
 
             c_stale = QuantumFCS.fcscumulants_recursive(
-                LindbladFCS(H, J; mJ = mJ, rho_ss = ρss, nu = nu, nC = 3,
-                            method = :iterative, Pl = Pl_stale, itmax = 500))
-            @test c_stale ≈ c_lu rtol = 1e-5
+                LindbladFCS(
+                    H, J; mJ = mJ, rho_ss = ρss, nu = nu, nC = 3,
+                    method = :iterative, Pl = Pl_stale, itmax = 500
+                )
+            )
+            @test c_stale ≈ c_lu rtol = 1.0e-5
         end
 
         @testset "low-level prepare_drazin_solver with Pl" begin
             n = size(ρss.data, 1)
             l = n * n
             diag_idx = collect(1:(n + 1):l)
-            vId = SparseVector{ComplexF64,Int}(l, diag_idx, fill(1.0 + 0.0im, n))
+            vId = SparseVector{ComplexF64, Int}(l, diag_idx, fill(1.0 + 0.0im, n))
             vρ = SparseVector(vec(Matrix(ρss.data) ./ tr(ρss.data)))
 
-            solver = QuantumFCS.prepare_drazin_solver(L, vρ, vId;
-                method = :iterative, Pl = Pl, rtol = 1e-10)
+            solver = QuantumFCS.prepare_drazin_solver(
+                L, vρ, vId;
+                method = :iterative, Pl = Pl, rtol = 1.0e-10
+            )
             @test solver isa QuantumFCS.DrazinSolver
 
             x = randn(ComplexF64, l)
             α = L * x
             y = QuantumFCS.drazin_solve(solver, α)
 
-            @test abs(dot(vId, y)) < 1e-8
+            @test abs(dot(vId, y)) < 1.0e-8
             αp = α .- vρ .* dot(vId, α)
-            @test norm(L * Vector(y) .- αp) / norm(αp) < 1e-6
+            @test norm(L * Vector(y) .- αp) / norm(αp) < 1.0e-6
         end
     end
 end

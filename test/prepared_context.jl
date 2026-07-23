@@ -49,7 +49,8 @@ using Test
 
     @testset "a dense Liouvillian is accepted (sparsified internally)" begin
         ctx = prepare_fcs_context(;
-            L = Matrix(liouvillian(H, J).data), rho_ss = Matrix(ρss.data), method = :lu)
+            L = Matrix(liouvillian(H, J).data), rho_ss = Matrix(ρss.data), method = :lu
+        )
         c = fcscumulants_recursive(ctx; mJ = [sparse(Jcloss.data)], nu = [1], nC = 2)
         @test c ≈ [c1_analytical, c2_analytical] atol = 1.0e-10
     end
@@ -60,13 +61,15 @@ using Test
         # Cold current and its noise vs. an independent high-level call.
         cold = fcscumulants_recursive(ctx; mJ = [Jcloss], nu = [1], nC = 2)
         cold_ref = fcscumulants_recursive(
-            LindbladFCS(H, J; mJ = [Jcloss], rho_ss = ρss, nu = [1], nC = 2))
+            LindbladFCS(H, J; mJ = [Jcloss], rho_ss = ρss, nu = [1], nC = 2)
+        )
         @test cold ≈ cold_ref atol = 1.0e-12
 
         # A different monitored observable (hot channel) on the *same* context.
         hot = fcscumulants_recursive(ctx; mJ = [Jhgain], nu = [1], nC = 2)
         hot_ref = fcscumulants_recursive(
-            LindbladFCS(H, J; mJ = [Jhgain], rho_ss = ρss, nu = [1], nC = 2))
+            LindbladFCS(H, J; mJ = [Jhgain], rho_ss = ρss, nu = [1], nC = 2)
+        )
         @test hot ≈ hot_ref atol = 1.0e-12
 
         # The very same prepared solver object backed both evaluations.
@@ -78,8 +81,10 @@ using Test
     @testset "cumulant_type passthrough" begin
         ctx = prepare_fcs_context(; H = H, J = J, rho_ss = ρss, method = :lu)
         ordinary = fcscumulants_recursive(ctx; mJ = [Jcloss], nu = [1], nC = 3)
-        factorial = fcscumulants_recursive(ctx; mJ = [Jcloss], nu = [1], nC = 3,
-            cumulant_type = "factorial")
+        factorial = fcscumulants_recursive(
+            ctx; mJ = [Jcloss], nu = [1], nC = 3,
+            cumulant_type = "factorial"
+        )
         @test factorial ≈ factorial_cumulants(ordinary) atol = 1.0e-12
     end
 
@@ -87,7 +92,8 @@ using Test
         @test Base.get_extension(QuantumFCS, :QuantumFCSIterativeExt) !== nothing
 
         ref = fcscumulants_recursive(
-            LindbladFCS(H, J; mJ = [Jcloss], rho_ss = ρss, nu = [1], nC = 3, method = :lu))
+            LindbladFCS(H, J; mJ = [Jcloss], rho_ss = ρss, nu = [1], nC = 3, method = :lu)
+        )
 
         ctx = prepare_fcs_context(; H = H, J = J, rho_ss = ρss, method = :iterative)
         @test ctx.solver isa QuantumFCS.DrazinSolver
@@ -98,8 +104,10 @@ using Test
         L = SparseMatrixCSC{ComplexF64, Int}(liouvillian(H, J).data)
         σ = 0.01 * maximum(abs, nonzeros(L))
         Pl = IncompleteLU.ilu(L - σ * I; τ = 0.01)
-        ctx_pl = prepare_fcs_context(; L = L, rho_ss = sparse(ρss.data),
-            method = :iterative, Pl = Pl)
+        ctx_pl = prepare_fcs_context(;
+            L = L, rho_ss = sparse(ρss.data),
+            method = :iterative, Pl = Pl
+        )
         c_pl = fcscumulants_recursive(ctx_pl; mJ = [sparse(Jcloss.data)], nu = [1], nC = 3)
         @test c_pl ≈ ref rtol = 1.0e-5
     end
@@ -118,8 +126,12 @@ using Test
         @test_throws ArgumentError prepare_fcs_context(; rho_ss = ρss)
 
         # Liouvillian inconsistent with the steady-state dimension.
-        L_wrong = SparseMatrixCSC{ComplexF64, Int}(liouvillian(destroy(FockBasis(3)),
-            [destroy(FockBasis(3))]).data)
+        L_wrong = SparseMatrixCSC{ComplexF64, Int}(
+            liouvillian(
+                destroy(FockBasis(3)),
+                [destroy(FockBasis(3))]
+            ).data
+        )
         @test_throws DimensionMismatch prepare_fcs_context(; L = L_wrong, rho_ss = sparse(ρss.data))
     end
 end

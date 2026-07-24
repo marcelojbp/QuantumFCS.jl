@@ -10,9 +10,16 @@ organised as a single object and solved with `fcscumulants_recursive(problem)`.
 abstract type FCSProblem end
 
 """
-    LindbladFCS(; H=nothing, J=nothing, L=nothing, mJ, rho_ss, nu, nC=2)
+    LindbladFCS(; H=nothing, J=nothing, L=nothing, mJ, rho_ss, nu, nC=2,
+                method=:lu, σ=nothing, τ=0.05, Pl=nothing,
+                rtol=1e-8, itmax=200, memory=30)
+    LindbladFCS(H, J; mJ, rho_ss, nu, nC=2, kwargs...)
 
 A full-counting-statistics problem for a Lindblad master equation.
+
+The second form is a convenience constructor provided by the `QuantumOptics` and
+`QuantumToolbox` extensions: it takes the model operators positionally and accepts
+the same keywords as the first.
 
 Construct it by keyword. Either supply a (vectorized) Liouvillian `L`, or both a
 Hamiltonian `H` and a vector of jump operators `J` (in which case `L` is built

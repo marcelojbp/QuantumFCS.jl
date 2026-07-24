@@ -2,7 +2,15 @@
 
 ## Project Structure & Module Organization
 
-`QuantumFCS.jl` is a Julia package for full counting statistics of open quantum systems. The main module lives in `src/QuantumFCS.jl` and includes core implementations from `src/FCS_functions.jl`. Optional `QuantumOptics.jl` integration is isolated in `ext/QuantumFCSQuantumOpticsExt.jl` and `ext/FCS_QuantumOptics_functions.jl`, so core functionality should not require that weak dependency. Tests live in `test/`, with `test/runtests.jl` including focused files such as `drazin_inverse.jl` and `qd_heat_engine.jl`. Documentation sources are in `docs/src/`; generated HTML is under `docs/build/`. `scripts/demo.jl` is available for local experimentation and profiling.
+`QuantumFCS.jl` is a Julia package for full counting statistics of open quantum systems. The main module lives in `src/QuantumFCS.jl` and includes core implementations from `src/FCS_functions.jl`, the problem/context types from `src/FCSProblem.jl`, and the trace-constrained steady-state helpers from `src/steady_state.jl`.
+
+Three package extensions live in `ext/`, so core functionality never requires a weak dependency:
+
+- `QuantumFCSQuantumOpticsExt` (`ext/FCS_QuantumOptics_functions.jl`) — `QuantumOptics.jl` operators.
+- `QuantumFCSQuantumToolboxExt` (`ext/FCS_QuantumToolbox_functions.jl`) — `QuantumToolbox.jl` operators.
+- `QuantumFCSIterativeExt` (`ext/QuantumFCSIterativeExt.jl`) — the matrix-free iterative Drazin backend, enabled by `using Krylov, IncompleteLU`.
+
+Tests live in `test/`, with `test/runtests.jl` including focused files such as `drazin_inverse.jl` and `qd_heat_engine.jl`. Documentation sources are in `docs/src/`; the generated HTML under `docs/build/` **is tracked in git** and is refreshed in its own commit. `scripts/demo.jl` is available for local experimentation and profiling.
 
 ## Build, Test, and Development Commands
 
@@ -11,7 +19,7 @@
 - `julia --project=docs docs/make.jl`: build and doctest the Documenter.jl documentation.
 - `julia --project=. scripts/demo.jl`: run the demo problem used for quick local checks.
 
-CI currently tests Julia `1.9`, `1.10`, and `1.11` on Ubuntu, so keep changes compatible with those versions.
+CI currently tests Julia `1.10`, `1.11`, and `1.12` on Ubuntu, matching the `julia = "1.10"` compat bound, so keep changes compatible with those versions.
 
 ## Coding Style & Naming Conventions
 
@@ -19,7 +27,7 @@ Follow standard Julia style with 4-space indentation, explicit type annotations 
 
 ## Testing Guidelines
 
-Use Julia's `Test` standard library. Add new tests as small files in `test/` and include them from `test/runtests.jl` inside the top-level `@testset "QuantumFCS.jl"`. Name files after the behavior or model under test, such as `drazin_comparison.jl`. For numerical checks, prefer `isapprox` or equivalent approximate comparisons with explicit tolerances, following existing `1e-10` style where appropriate.
+Use Julia's `Test` standard library (a test-only dependency — it must stay out of `[deps]`). Add new tests as small files in `test/` and include them from `test/runtests.jl` with `@safetestset`, which runs each file in its own module so backend names that clash between `QuantumOptics` and `QuantumToolbox` cannot collide. Name files after the behavior or model under test, such as `drazin_comparison.jl`. For numerical checks, prefer `isapprox` or equivalent approximate comparisons with explicit tolerances, following existing `1e-10` style where appropriate.
 
 ## Commit & Pull Request Guidelines
 
@@ -27,4 +35,4 @@ Recent commits use short, plain-language summaries such as `Fix installation ins
 
 ## Documentation Notes
 
-Update `docs/src/` when public behavior, examples, or signatures change. Do not hand-edit `docs/build/` unless the project intentionally tracks regenerated documentation for the change.
+Update `docs/src/` when public behavior, examples, or signatures change. Never hand-edit `docs/build/`: it is tracked, but only ever regenerated with `julia --project=docs docs/make.jl`, and committed separately from the source change.

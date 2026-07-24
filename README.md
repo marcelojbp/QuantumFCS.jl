@@ -1,6 +1,6 @@
 # QuantumFCS.jl
 
-[![CI](https://github.com/marcelojbp/QuantumFCS/actions/workflows/CI.yml/badge.svg)](https://github.com/marcelojbp/QuantumFCS/actions/workflows/CI.yml)
+[![CI](https://github.com/marcelojbp/QuantumFCS.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/marcelojbp/QuantumFCS.jl/actions/workflows/CI.yml)
 [![Docs: dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://marcelojbp.github.io/QuantumFCS.jl)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Cite](https://img.shields.io/badge/cite-CITATION.bib-informational.svg)](CITATION.bib)
@@ -98,5 +98,5 @@ Planned extensions:
 ## Citation
 
 If you use QuantumFCS.jl in your research, please cite it via
-[`CITATION.bib`](CITATION.bib) / [`CITATION.yaml`](CITATION.yaml). A companion paper with
+[`CITATION.bib`](CITATION.bib) / [`CITATION.cff`](CITATION.cff). A companion paper with
 applications is in preparation — its reference will be added here once available.

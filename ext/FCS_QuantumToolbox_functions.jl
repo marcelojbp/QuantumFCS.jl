@@ -69,6 +69,14 @@ QuantumFCS._operator_data(x::QuantumObject) = _qt_sp(x.data)
 QuantumFCS._state_data(x::QuantumObject) = _qt_sp(x.data)
 QuantumFCS._build_liouvillian(H::QuantumObject, J) = _qt_sp(liouvillian(H, J).data)
 
+# NOTE: deliberately no `_backend_dimensions` override. The natural implementation,
+# `x.dimensions`, is not portable across the supported QuantumToolbox range: for a
+# SuperOperator it yields Liouville-space dimensions on 0.4x (nested
+# `LiouvilleSpace`) rather than the Hilbert-space dimensions a caller would need to
+# rewrap `rho_ss`. Returning those would be worse than returning nothing, so
+# `TraceConstrainedSystem.dimensions` stays `nothing` and callers pass the
+# Hilbert dimensions they already know.
+
 # Convenience constructor: build a problem from H and J, deferring L to solve time.
 function QuantumFCS.LindbladFCS(
         H::QuantumObject, J::AbstractVector{<:QuantumObject};

@@ -14,7 +14,7 @@ makedocs(
     modules = [QuantumFCS],
     format = Documenter.HTML(),
     doctest = true,
-    checkdocs = :none,
+    checkdocs = :exports,
     pages = [
         "Home" => "index.md",
         "Quickstart" => "quickstart.md",

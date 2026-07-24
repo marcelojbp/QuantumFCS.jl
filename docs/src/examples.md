@@ -205,4 +205,4 @@ package usage, and every printed result on them comes from an actual run.
 The full production pipelines behind the manuscript figures — parameter grids,
 cutoff scheduling, provenance metadata, and the figure routines — live in the
 companion repository
-[QuantumFCS-Notebooks](https://github.com/marcelojbp/QuantumFCS-Notebooks).
+[QuantumFCS-Notebooks](https://github.com/aarondanielphysics/QuantumFCS-Notebooks).

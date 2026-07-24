@@ -44,7 +44,7 @@ sharply than the mean does.
     using it for everything.
 
 This page is a self-contained condensation of the companion notebook
-[`driven_dissipative_jaynes_cummings.ipynb`](https://github.com/marcelojbp/QuantumFCS-Notebooks),
+[`driven_dissipative_jaynes_cummings.ipynb`](https://github.com/aarondanielphysics/QuantumFCS-Notebooks),
 which reproduces Fig. 2 of the manuscript.
 
 ## Setup
@@ -501,7 +501,7 @@ It shows:
 The full production pipeline — the detuned semiclassical root-finding, the per-cut
 `pad_sigma`, the per-point retry on a failed acceptance gate, and the figure
 routines — lives in the companion repository
-[QuantumFCS-Notebooks](https://github.com/marcelojbp/QuantumFCS-Notebooks).
+[QuantumFCS-Notebooks](https://github.com/aarondanielphysics/QuantumFCS-Notebooks).
 
 ## See also
 

@@ -20,7 +20,10 @@ makedocs(
         "Quickstart" => "quickstart.md",
         "Mathematical Background" => "math.md",
         "Drazin solvers" => "solvers.md",
-        "Examples" => "examples.md",
+        "Examples" => [
+            "Overview" => "examples.md",
+            "Driven-dissipative Jaynes-Cummings" => "examples/jaynes_cummings.md",
+        ],
         "API" => "api.md",
     ],
 )

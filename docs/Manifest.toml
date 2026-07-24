@@ -242,10 +242,10 @@ uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 version = "1.11.0"
 
 [[deps.QuantumFCS]]
-deps = ["LinearAlgebra", "SparseArrays", "Test"]
-path = "/Users/jano/dev/QuantumFCS"
+deps = ["LinearAlgebra", "SparseArrays"]
+path = ".."
 uuid = "f61df7d1-40df-4ff5-bdc9-ea200d60bc8f"
-version = "1.0.0"
+version = "1.1.0"
 
     [deps.QuantumFCS.extensions]
     QuantumFCSIterativeExt = ["Krylov", "IncompleteLU"]

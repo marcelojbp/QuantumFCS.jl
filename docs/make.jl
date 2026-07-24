@@ -20,7 +20,11 @@ makedocs(
         "Quickstart" => "quickstart.md",
         "Mathematical Background" => "math.md",
         "Drazin solvers" => "solvers.md",
-        "Examples" => "examples.md",
+        "Examples" => [
+            "Overview" => "examples.md",
+            "Driven-dissipative Jaynes-Cummings" => "examples/jaynes_cummings.md",
+            "Circuit-QED heat engine" => "examples/circuit_qed_heat_engine.md",
+        ],
         "API" => "api.md",
     ],
 )

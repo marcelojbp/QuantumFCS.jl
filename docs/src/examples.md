@@ -180,7 +180,29 @@ Second cumulant (variance): 0.012890993774510551
 Third cumulant (skewness): 0.011185533737017767
 ```
 
-## Applications from the paper (coming soon)
+## Applications from the paper
 
-A companion paper with worked applications of `QuantumFCS.jl` is in preparation. Its
-examples will be added here as runnable notebooks/scripts once the manuscript is public.
+The two examples above are deliberately small — they exist to show the shape of the
+API. Two larger applications, taken from the companion paper, are worked through on
+their own pages:
+
+- [Driven-dissipative Jaynes–Cummings model](@ref jc-example) — photon-blockade
+  breakdown in a driven cavity coupled to a two-level atom. Three cumulants of the
+  cavity emission, on Liouvillians up to ``\sim\!10^6\times10^6``. Shows the
+  iterative backend end to end: the trace-constrained steady state, injecting its
+  incomplete-LU factorization into the Drazin solve, and carrying that
+  factorization (plus a GMRES warm start) across a parameter sweep with adaptive
+  rebuilds.
+- [Circuit-QED quantum heat engine](@ref qhe-example) — photon-assisted Cooper-pair
+  tunnelling between a hot and a cold microwave mode. Two heat currents on one
+  Liouvillian and one steady state, so the Drazin solver is prepared once and
+  reused for both; ends in the thermodynamic-uncertainty-relation analysis those
+  cumulants feed.
+
+Both pages carry the physics and the numerical-reliability discussion alongside the
+package usage, and every printed result on them comes from an actual run.
+
+The full production pipelines behind the manuscript figures — parameter grids,
+cutoff scheduling, provenance metadata, and the figure routines — live in the
+companion repository
+[QuantumFCS-Notebooks](https://github.com/marcelojbp/QuantumFCS-Notebooks).

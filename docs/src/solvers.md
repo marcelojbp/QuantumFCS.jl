@@ -111,7 +111,9 @@ non-convergence warning, never as a silently wrong result. When `Pl` is supplied
 
 This is the recommended pattern for parameter sweeps — build (or reuse) one ILU per
 neighbourhood of points and feed it to both the steady-state solve and the FCS
-cumulants.
+cumulants. The [driven-dissipative Jaynes–Cummings example](@ref jc-example) works
+this through on a real sweep, including when to *stop* reusing a factorization and
+rebuild it.
 
 !!! tip "Steady-state accuracy dominates the high cumulants"
     Both backends inherit the accuracy of the steady state `ρss` you pass in. High
@@ -168,6 +170,12 @@ prebuilt [`TraceConstrainedSystem`](@ref) — the last enables warm-started cont
 across a parameter sweep by reusing one system and preconditioner (`Pl`, `u0`) over
 neighbouring points.
 
+Both routes are demonstrated in the examples: the
+[Jaynes–Cummings page](@ref jc-example) drives the `TraceConstrainedSystem` +
+`Pl`/`u0` continuation directly, and the
+[heat-engine page](@ref qhe-example) takes the shorter path of handing the
+`TraceConstrainedSteadyState` to `prepare_fcs_context`.
+
 ## [Reusing a prepared solver across observables](@id prepared-context)
 
 The Drazin solver depends only on the Liouvillian ``\mathcal{L}`` and the steady
@@ -207,6 +215,9 @@ ctx = prepare_fcs_context(; H = H, J = J, rho_ss = ρss, method = :iterative, Pl
 The result is numerically identical to preparing the solver anew for each observable
 (the reuse changes only the cost, never the answer). This is the recommended setup
 whenever many monitored observables are computed on one Liouvillian and steady state.
+The [circuit-QED heat-engine example](@ref qhe-example) uses it for the hot and cold
+heat currents of a two-terminal engine, and checks both against currents computed
+directly from ``\rho_\text{ss}``.
 
 ## API
 

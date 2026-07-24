@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Driven-dissipative Jaynes-Cummings · QuantumFCS.jl</title><meta name="title" content="Driven-dissipative Jaynes-Cummings · QuantumFCS.jl"/><meta property="og:title" content="Driven-dissipative Jaynes-Cummings · QuantumFCS.jl"/><meta property="twitter:title" content="Driven-dissipative Jaynes-Cummings · QuantumFCS.jl"/><meta name="description" content="Documentation for QuantumFCS.jl."/><meta property="og:description" content="Documentation for QuantumFCS.jl."/><meta property="twitter:description" content="Documentation for QuantumFCS.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="QuantumFCS.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">QuantumFCS.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Quickstart</a></li><li><a class="tocitem" href="../../math/">Mathematical Background</a></li><li><a class="tocitem" href="../../solvers/">Drazin solvers</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../">Overview</a></li><li class="is-active"><a class="tocitem" href>Driven-dissipative Jaynes-Cummings</a><ul class="internal"><li><a class="tocitem" href="#Setup"><span>Setup</span></a></li><li><a class="tocitem" href="#One-point,-start-to-finish"><span>One point, start to finish</span></a></li><li><a class="tocitem" href="#Choosing-the-Fock-cutoff"><span>Choosing the Fock cutoff</span></a></li><li><a class="tocitem" href="#The-sweep"><span>The sweep</span></a></li><li><a class="tocitem" href="#Numerical-reliability:-why-the-boundary-tail-is-not-enough"><span>Numerical reliability: why the boundary tail is not enough</span></a></li><li><a class="tocitem" href="#The-manuscript-figure"><span>The manuscript figure</span></a></li><li><a class="tocitem" href="#See-also"><span>See also</span></a></li></ul></li><li><a class="tocitem" href="../circuit_qed_heat_engine/">Circuit-QED heat engine</a></li></ul></li><li><a class="tocitem" href="../../api/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Driven-dissipative Jaynes-Cummings</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Driven-dissipative Jaynes-Cummings</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/marcelojbp/QuantumFCS.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/marcelojbp/QuantumFCS.jl/blob/main/docs/src/examples/jaynes_cummings.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="jc-example"><a class="docs-heading-anchor" href="#jc-example">Driven-dissipative Jaynes–Cummings model</a><a id="jc-example-1"></a><a class="docs-heading-anchor-permalink" href="#jc-example" title="Permalink"></a></h1><p>A coherently driven cavity coupled to a two-level atom, with cavity loss only. In the frame rotating at the drive frequency,</p><p class="math-container">\[H = -\Delta\,(a^\dagger a + \sigma_+\sigma_-)
+    + g\,(a^\dagger\sigma_- + a\,\sigma_+)
+    - \mathcal{E}\,(a + a^\dagger),
+\qquad
+\dot\rho = -i[H,\rho] + \kappa\,\mathcal{D}[a]\rho ,\]</p><p>with <span>$\Delta$</span> the common cavity/atom detuning from the drive, <span>$g$</span> the Jaynes–Cummings coupling, <span>$\mathcal{E}$</span> the drive amplitude, and <span>$\kappa$</span> the cavity linewidth (which sets the unit of energy throughout).</p><p>We count the <strong>cavity emission</strong> <span>$\kappa\,a\rho a^\dagger$</span> — a single monitored jump with weight <span>$+1$</span> — and compute the first three cumulants of the emitted-photon counting statistics:</p><p class="math-container">\[\frac{c_1}{\kappa} = \langle a^\dagger a\rangle,
+\qquad
+\mathcal{F} = \frac{c_2}{c_1},
+\qquad
+\mathcal{G} = \frac{c_3}{c_2^{3/2}} ,\]</p><p>the count rate, the Fano factor, and the skewness. Sweeping the dimensionless drive <span>$x = 2\mathcal{E}/g$</span> at fixed <span>$g/\kappa = 14$</span> crosses the <strong>photon-blockade breakdown</strong>. On the detuned cuts the cavity becomes bimodal — a dim, blockaded state coexisting with a bright, lasing-like one — and the emission is strongly intermittent, which the higher cumulants register far more sharply than the mean does.</p><div class="admonition is-info" id="Why-this-problem-needs-the-iterative-backend-bfa231f2af23e671"><header class="admonition-header">Why this problem needs the iterative backend<a class="admonition-anchor" href="#Why-this-problem-needs-the-iterative-backend-bfa231f2af23e671" title="Permalink"></a></header><div class="admonition-body"><p>The bright branch carries hundreds of photons, so the Fock cutoff must grow with the drive. At <span>$N = 500$</span> the Liouvillian is a <span>$\sim\!10^6 \times 10^6$</span> sparse non-Hermitian matrix: forming an LU factorization of it is hopeless, and every point needs a steady state <em>and</em> three Drazin solves. This page is a worked example of the <a href="../../solvers/#solvers">iterative backend</a> — in particular of building <strong>one</strong> incomplete-LU factorization per parameter neighbourhood and using it for everything.</p></div></div><p>This page is a self-contained condensation of the companion notebook <a href="https://github.com/marcelojbp/QuantumFCS-Notebooks"><code>driven_dissipative_jaynes_cummings.ipynb</code></a>, which reproduces Fig. 2 of the manuscript.</p><h2 id="Setup"><a class="docs-heading-anchor" href="#Setup">Setup</a><a id="Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Setup" title="Permalink"></a></h2><pre><code class="language-julia hljs">using QuantumToolbox
+using QuantumFCS
+using Krylov, IncompleteLU          # enables the iterative backend
+using SparseArrays, LinearAlgebra, Printf</code></pre><p>The operators are built once for a given Fock cutoff <code>N</code>. The two Hamiltonian pieces that a sweep rescales — the Jaynes–Cummings coupling and the drive — are returned separately, so a sweep can rebuild <code>H</code> cheaply while the operators stay fixed.</p><pre><code class="language-julia hljs">const g = 14.0     # Jaynes-Cummings coupling, in units of κ
+const κ = 1.0      # cavity linewidth sets the unit
+
+# Cavity + atom operators at Fock cutoff N (Hilbert dimension 2(N+1)).
+function jc_operators(N)
+    a  = tensor(destroy(N + 1), qeye(2))
+    sm = tensor(qeye(N + 1), sigmam())
+    return (; a, sm,
+              Hjc         = a&#39; * sm + a * sm&#39;,      # a†σ₋ + aσ₊
+              Hdr         = -(a + a&#39;),              # -(a + a†)
+              n_op        = a&#39; * a,
+              detuning_op = a&#39; * a + sm&#39; * sm)
+end
+
+# The Hamiltonian at one (Δ, E) point is a linear combination of those pieces.
+jc_hamiltonian(ops, Δ, g, E) = -Δ * ops.detuning_op + g * ops.Hjc + E * ops.Hdr
+
+N_demo = 150
+ops = jc_operators(N_demo)
+cavity_loss = sqrt(κ) * ops.a      # the single jump operator, and the counted channel
+
+@printf(&quot;cutoff N = %d  -&gt;  Hilbert dim = %d, Liouvillian %d x %d\n&quot;,
+        N_demo, 2 * (N_demo + 1), (2 * (N_demo + 1))^2, (2 * (N_demo + 1))^2)</code></pre><pre><code class="language-julia hljs">cutoff N = 150  -&gt;  Hilbert dim = 302, Liouvillian 91204 x 91204</code></pre><h2 id="One-point,-start-to-finish"><a class="docs-heading-anchor" href="#One-point,-start-to-finish">One point, start to finish</a><a id="One-point,-start-to-finish-1"></a><a class="docs-heading-anchor-permalink" href="#One-point,-start-to-finish" title="Permalink"></a></h2><p>This is the whole <code>QuantumFCS</code> call sequence for a single drive point.</p><ol><li><a href="../../api/#QuantumFCS.trace_constrained_system"><code>trace_constrained_system</code></a> replaces the singular condition <span>$\mathcal{L}\rho = 0$</span> with a non-singular linear system by imposing <span>$\operatorname{tr}\rho = 1$</span>.</li><li><a href="../../api/#QuantumFCS.trace_constrained_steadystate"><code>trace_constrained_steadystate</code></a> solves it with GMRES preconditioned by a shifted incomplete-LU factorization, and <strong>returns that factorization</strong> in <code>ss.Pl</code>.</li><li><a href="../../api/#QuantumFCS.LindbladFCS"><code>LindbladFCS</code></a> with <code>Pl = ss.Pl</code> hands the <em>same</em> factorization to the Drazin-inverse solves inside the cumulant recursion.</li></ol><p>Building the ILU is a near-complete factorization and dominates the cost of a point, so step 3 is what makes the point cost <strong>one</strong> factorization rather than two. See <a href="../../solvers/#reuse-precond">Reusing a preconditioner</a> for the general rule.</p><p>The counting data is the monitored jump list <code>mJ = [√κ a]</code> with weight <code>nu = [1.0]</code>; <code>nC = 3</code> asks for the first three cumulants.</p><pre><code class="language-julia hljs">Δ_demo, x_demo = 0.55, 0.60
+E_demo = x_demo * g / 2
+
+H   = jc_hamiltonian(ops, Δ_demo, g, E_demo)
+L   = liouvillian(H, [cavity_loss])
+sys = trace_constrained_system(L)
+
+# --- steady state (also produces the preconditioner we reuse below) ----------
+ss = trace_constrained_steadystate(sys;
+    method       = :iterative,
+    τ            = 1e-1,      # ILU drop tolerance
+    shift_factor = 1e-6,      # diagonal shift keeping the factorization stable
+    rtol = 1e-10, atol = 1e-14, itmax = 120, memory = 60)
+
+ρss  = QuantumObject(ss.rho_ss; type = Operator, dims = L.dimensions)
+n_ss = real(expect(ops.n_op, ρss))
+
+# --- cumulants, reusing the steady-state ILU as the Drazin preconditioner ----
+cumulants = fcscumulants_recursive(LindbladFCS(
+    L      = SparseMatrixCSC{ComplexF64,Int}(sys.L),
+    mJ     = [cavity_loss],   # monitored jump: cavity emission
+    rho_ss = ρss,
+    nu     = [1.0],           # counting weight
+    nC     = 3,
+    method = :iterative,
+    Pl     = ss.Pl,           # &lt;-- the factorization built for the steady state
+    rtol = 1e-8, itmax = 300, memory = 60))
+
+c1, c2, c3 = cumulants
+@printf(&quot;Δ/κ = %.2f, x = 2E/g = %.2f, N = %d\n&quot;, Δ_demo, x_demo, N_demo)
+@printf(&quot;  ⟨a†a⟩   = %.10g\n&quot;, n_ss)
+@printf(&quot;  c₁      = %.10g      Fano  c₂/c₁       = %.6g\n&quot;, c1, c2 / c1)
+@printf(&quot;  c₂      = %.10g      skew  c₃/c₂^{3/2} = %.6g\n&quot;, c2, c3 / c2^1.5)
+@printf(&quot;  steady state converged: %s in %d iterations\n&quot;,
+        ss.stats.converged, ss.stats.iterations)
+@printf(&quot;  identity |c₁/(κ⟨a†a⟩) − 1| = %.3e\n&quot;, abs(c1 / (κ * n_ss) - 1))</code></pre><pre><code class="language-julia hljs">Δ/κ = 0.55, x = 2E/g = 0.60, N = 150
+  ⟨a†a⟩   = 0.1085414737
+  c₁      = 0.1085414737      Fano  c₂/c₁       = 22.9967
+  c₂      = 2.496090669      skew  c₃/c₂^{3/2} = 45.9077
+  steady state converged: true in 11 iterations
+  identity |c₁/(κ⟨a†a⟩) − 1| = 0.000e+00</code></pre><p>The last line is an exact identity, not a tolerance: for a single monitored loss channel of weight <span>$+1$</span>, the first cumulant of the counting statistics <strong>is</strong> the photon loss rate,</p><p class="math-container">\[c_1 = \kappa\,\langle a^\dagger a\rangle .\]</p><p>It couples the FCS result to a quantity computed independently from <span>$\rho_\text{ss}$</span>, so it detects a mis-solved Drazin system, a mis-specified weight, and a non-converged steady state alike. It is the acceptance gate applied at every point of the sweeps below.</p><h2 id="Choosing-the-Fock-cutoff"><a class="docs-heading-anchor" href="#Choosing-the-Fock-cutoff">Choosing the Fock cutoff</a><a id="Choosing-the-Fock-cutoff-1"></a><a class="docs-heading-anchor-permalink" href="#Choosing-the-Fock-cutoff" title="Permalink"></a></h2><p>A single cutoff for the whole sweep would be wasteful at low drive and wrong at high drive. Instead each point gets its own cutoff, chosen <em>before</em> solving from a semiclassical estimate <span>$n$</span> of the bright-branch photon number and padded for the coherent-state width:</p><p class="math-container">\[N_{\text{hard}} = n + \texttt{pad\_sigma}\,\sqrt{n} + \texttt{pad\_abs},
+\qquad
+N_{\text{target}} = \max\!\left(N_{\text{hard}},\; n/\texttt{occ\_max}\right),\]</p><p>rounded up to the next tier of a fixed ladder. The <span>$\sqrt{n}$</span> term is the coherent-state truncation criterion: a cutoff at or above <span>$N_\text{hard}$</span> resolves the mean, the Fano factor, and the boundary tail. The extra <span>$n/\texttt{occ\_max}$</span> headroom exists purely for <span>$c_3$</span>, which — as the convergence table below shows — is roughly two orders of magnitude more truncation-sensitive than <span>$c_1$</span>.</p><p>On resonance the estimate is closed-form,</p><p class="math-container">\[n(\Delta = 0) = \frac{\max\!\left(4\mathcal{E}^2 - g^2,\, 0\right)}{\kappa^2},\]</p><p>which is zero below the breakdown drive <span>$x = 1$</span>: there is no bright branch to accommodate, and the absolute floor <code>pad_abs</code> sets the cutoff. Off resonance the bright branch is the largest root of the neoclassical state equation <span>$u\,[\kappa_C^2 + D_s(u)^2] = \mathcal{E}^2$</span> with the effective detuning <span>$D_s(u) = \Delta - s\,\mathrm{sgn}(\Delta)\,g^2/\sqrt{\Delta^2 + 4g^2u}$</span> over both branches <span>$s = \pm1$</span>; the companion repository&#39;s <code>jc_model.jl</code> solves it by bisection.</p><pre><code class="language-julia hljs">const TIERS   = (150, 175, 200, 225, 250, 275, 300, 350, 400, 450, 500)
+const OCC_MAX = 0.50
+const PAD_ABS = 25.0
+
+# Semiclassical bright-branch photon number, resonant cut (Δ = 0).
+jc_bright_n(g, E; κ = 1.0) = max(4 * abs2(E) - abs2(g), 0.0) / abs2(κ)
+
+# Smallest tier meeting both the coherent-width requirement and the occupation
+# aspiration; `clamped` marks a point the ladder cannot resolve at all.
+function jc_cutoff(n_est; pad_sigma = 6.0, pad_abs = PAD_ABS, occ_max = OCC_MAX)
+    n      = max(n_est, 0.0)
+    hard   = n + pad_sigma * sqrt(n) + pad_abs
+    target = max(hard, n / occ_max)
+    idx    = findfirst(≥(target), TIERS)
+    return (N = idx === nothing ? last(TIERS) : TIERS[idx],
+            hard = hard, target = target, clamped = hard &gt; last(TIERS))
+end
+
+function jc_cutoff_table(xs; pad_sigma)
+    println(&quot;     x      n_est     N_hard   N_target      N   headroom (N−n)/√n&quot;)
+    for x in xs
+        n = jc_bright_n(g, x * g / 2; κ = κ)
+        c = jc_cutoff(n; pad_sigma = pad_sigma)
+        @printf(&quot;%6.2f %10.3f %10.1f %10.1f %6d %18s\n&quot;,
+                x, n, c.hard, c.target, c.N,
+                n &gt; 0 ? @sprintf(&quot;%.1f&quot;, (c.N - n) / sqrt(n)) : &quot;— (no bright branch)&quot;)
+    end
+end
+
+println(&quot;Resonant cut (Δ = 0), pad_sigma = 14:&quot;)
+jc_cutoff_table((0.30, 0.70, 1.00, 1.10, 1.25, 1.45); pad_sigma = 14.0)</code></pre><pre><code class="language-julia hljs">Resonant cut (Δ = 0), pad_sigma = 14:
+     x      n_est     N_hard   N_target      N   headroom (N−n)/√n
+  0.30      0.000       25.0       25.0    150 — (no bright branch)
+  0.70      0.000       25.0       25.0    150 — (no bright branch)
+  1.00      0.000       25.0       25.0    150 — (no bright branch)
+  1.10     41.160      156.0      156.0    175               20.9
+  1.25    110.250      282.2      282.2    300               18.1
+  1.45    216.090      446.9      446.9    450               15.9</code></pre><p>Two things are worth noting about this schedule. First, points sharing a cutoff form a <strong>segment</strong>, and a segment is exactly the span over which one ILU factorization gets reused — the ladder is therefore a performance decision as much as an accuracy one. Second, <code>pad_sigma</code> is tuned <em>per detuning cut</em> in the manuscript run: the resonant cut carries small photon numbers across most of the drive range, and the <span>$\sigma$</span>-headroom <span>$(N-n)/\sqrt{n}$</span> that bounds the <span>$c_3$</span> truncation bias is smallest precisely where <span>$n$</span> is small. Giving the resonant cut <code>pad_sigma = 14</code> rather than the default <code>6</code> lifts it to <span>$\sim\!16\sigma$</span> and removes a <span>$c_3$</span> artefact near <span>$x \approx 1.25$</span>, while leaving the detuned cuts — already well resolved at their higher <span>$N$</span> — untouched.</p><h2 id="The-sweep"><a class="docs-heading-anchor" href="#The-sweep">The sweep</a><a id="The-sweep-1"></a><a class="docs-heading-anchor-permalink" href="#The-sweep" title="Permalink"></a></h2><p>Three mechanisms make a long sweep affordable, and all three are visible in the loop below:</p><ul><li><strong>preconditioner reuse</strong> — the shifted ILU is built for the first point of a segment and passed back in as <code>Pl</code> for every later point. Building it dominates the cost of a point, so this is the difference between minutes and hours.</li><li><strong>warm starting</strong> — each solve starts GMRES from the previous point&#39;s steady state via <code>u0</code>, since neighbouring drive points have similar states.</li><li><strong>adaptive rebuild</strong> — as the drive moves the state, a reused factorization eventually goes stale. The tell is the iteration count creeping up, or GMRES failing outright, and that is precisely when we rebuild. Reuse while it works; rebuild only when it stops working.</li></ul><p>The same <code>Pl</code> is then injected into the cumulant solve, so a point costs one factorization in total.</p><div class="admonition is-success" id="Wrap-the-loop-in-a-function-f759b41abde4bc3"><header class="admonition-header">Wrap the loop in a function<a class="admonition-anchor" href="#Wrap-the-loop-in-a-function-f759b41abde4bc3" title="Permalink"></a></header><div class="admonition-body"><p>The preconditioner and the warm start are carried in local variables across iterations. At top level those would be globals, which under Julia&#39;s soft scope rules is both type-unstable and markedly slower. Putting the loop in a function also makes a segment re-runnable at will.</p></div></div><pre><code class="language-julia hljs">function jc_drive_segment(Δ, x_values, N; g, κ = 1.0,
+                          ilu_tau = 1e-1, shift_factor = 1e-6, nC = 3,
+                          itmax = 120, fallback_itmax = 300, rebuild_niter = 80)
+    ops  = jc_operators(N)
+    loss = sqrt(κ) * ops.a
+
+    Pl     = nothing    # segment preconditioner: built on the first point, then reused
+    u_prev = nothing    # warm start carried from the previous drive point
+    rows   = NamedTuple[]
+
+    for x in x_values
+        E  = x * g / 2
+        t0 = time_ns()
+
+        H   = jc_hamiltonian(ops, Δ, g, E)
+        L   = liouvillian(H, [loss])
+        sys = trace_constrained_system(L)
+
+        ss = trace_constrained_steadystate(sys;
+            method       = :iterative,
+            Pl           = Pl,        # reuse the segment factorization (nothing ⇒ build it)
+            u0           = u_prev,    # warm start from the previous point
+            τ            = ilu_tau,
+            shift_factor = shift_factor,
+            rtol = 1e-10, atol = 1e-14, itmax = itmax, memory = 60)
+
+        # As the drive moves the state, a reused factorization eventually goes
+        # stale: GMRES starts needing many iterations, or stops converging. That
+        # is the signal to rebuild it — and only then.
+        rebuilt = false
+        if !ss.stats.converged || ss.stats.iterations &gt; rebuild_niter
+            ss = trace_constrained_steadystate(sys;
+                method       = :iterative,
+                Pl           = nothing,                   # force a fresh factorization
+                u0           = vec(Matrix(ss.rho_ss)),
+                τ            = ilu_tau,
+                shift_factor = shift_factor,
+                rtol = 1e-10, atol = 1e-14, itmax = fallback_itmax, memory = 60)
+            rebuilt = true
+        end
+
+        Pl         = ss.Pl                       # keep it for the next point
+        u_prev     = vec(Matrix(ss.rho_ss))
+        ss_seconds = (time_ns() - t0) / 1e9
+
+        ρss = QuantumObject(ss.rho_ss; type = Operator, dims = L.dimensions)
+        n   = real(expect(ops.n_op, ρss))
+
+        t1 = time_ns()
+        c = fcscumulants_recursive(LindbladFCS(
+            L = SparseMatrixCSC{ComplexF64,Int}(sys.L),
+            mJ = [loss], rho_ss = ρss, nu = [1.0], nC = nC,
+            method = :iterative, Pl = Pl,        # same factorization drives the Drazin solve
+            rtol = 1e-8, itmax = 300, memory = 60))
+        fcs_seconds = (time_ns() - t1) / 1e9
+
+        current_check = c[1] / (κ * n)
+        push!(rows, (; Δ, x, N, n, c1 = c[1], c2 = c[2], c3 = c[3],
+                       Fano = c[2] / c[1], current_check, rebuilt,
+                       ss_iterations = ss.stats.iterations, ss_seconds, fcs_seconds))
+
+        @printf(&quot;Δ=%.2f x=%.2f N=%3d | n=%10.4g  F=%8.4g | c₁/(κn)−1=%8.1e | ss %5.2fs  fcs %5.2fs%s\n&quot;,
+                Δ, x, N, n, c[2] / c[1], current_check - 1, ss_seconds, fcs_seconds,
+                rebuilt ? &quot;  [ILU rebuilt]&quot; : &quot;&quot;)
+        flush(stdout)
+    end
+    return rows
+end</code></pre><p>Run it on the resonant cut, where the whole low-drive range shares one cutoff — a genuine segment of the production sweep, in about a minute:</p><pre><code class="language-julia hljs">x_sweep = collect(0.05:0.05:0.70)
+N_sweep = maximum(jc_cutoff(jc_bright_n(g, x * g / 2; κ = κ); pad_sigma = 14.0).N
+                  for x in x_sweep)
+
+segment = jc_drive_segment(0.0, x_sweep, N_sweep; g = g, κ = κ)
+
+@printf(&quot;\ntotal: %d points, %.1f s  |  worst |c₁/(κn)−1| = %.2e\n&quot;,
+        length(segment),
+        sum(r.ss_seconds for r in segment) + sum(r.fcs_seconds for r in segment),
+        maximum(abs(r.current_check - 1) for r in segment))</code></pre><pre><code class="language-julia hljs">Δ=0.00 x=0.05 N=150 | n= 7.881e-07  F=   2.023 | c₁/(κn)−1=-2.2e-16 | ss  1.24s  fcs  0.78s
+Δ=0.00 x=0.10 N=150 | n= 1.299e-05  F=    2.09 | c₁/(κn)−1=-4.4e-16 | ss  0.61s  fcs  0.74s
+Δ=0.00 x=0.15 N=150 | n= 6.909e-05  F=   2.211 | c₁/(κn)−1= 0.0e+00 | ss  0.99s  fcs  0.74s
+Δ=0.00 x=0.20 N=150 | n= 0.0002343  F=   2.396 | c₁/(κn)−1= 2.2e-16 | ss  1.49s  fcs  1.39s
+Δ=0.00 x=0.25 N=150 | n= 0.0006273  F=   2.663 | c₁/(κn)−1= 0.0e+00 | ss  3.08s  fcs  1.54s
+Δ=0.00 x=0.30 N=150 | n=   0.00146  F=   3.038 | c₁/(κn)−1=-5.6e-16 | ss  1.93s  fcs  2.71s
+Δ=0.00 x=0.35 N=150 | n=  0.003108  F=   3.563 | c₁/(κn)−1=-4.4e-16 | ss  3.13s  fcs  4.24s
+Δ=0.00 x=0.40 N=150 | n=  0.006254  F=   4.295 | c₁/(κn)−1=-1.1e-16 | ss  2.44s  fcs  5.90s
+Δ=0.00 x=0.45 N=150 | n=   0.01214  F=   5.321 | c₁/(κn)−1= 2.2e-16 | ss  7.08s  fcs  0.97s  [ILU rebuilt]
+Δ=0.00 x=0.50 N=150 | n=   0.02307  F=   6.764 | c₁/(κn)−1= 0.0e+00 | ss  1.73s  fcs  1.08s
+Δ=0.00 x=0.55 N=150 | n=    0.0434  F=   8.802 | c₁/(κn)−1= 0.0e+00 | ss  1.69s  fcs  2.80s
+Δ=0.00 x=0.60 N=150 | n=   0.08138  F=   11.67 | c₁/(κn)−1=-8.9e-16 | ss  1.73s  fcs  2.58s
+Δ=0.00 x=0.65 N=150 | n=    0.1529  F=   15.66 | c₁/(κn)−1= 0.0e+00 | ss  2.39s  fcs  5.38s
+Δ=0.00 x=0.70 N=150 | n=    0.2888  F=   21.09 | c₁/(κn)−1=-1.8e-15 | ss  3.49s  fcs  7.18s
+
+total: 14 points, 71.1 s  |  worst |c₁/(κn)−1| = 1.78e-15</code></pre><p>The identity holds to roundoff at every point. The steady-state time drops after the first point — that one paid for the factorization — and rises again only at <code>x = 0.45</code>, where the reuse heuristic decided the factorization had drifted too far and rebuilt it. Note also that the Fano factor is already at <span>$\mathcal{F} \approx 21$</span> by the end of this range: emission on the approach to breakdown is enormously super-Poissonian, and this is the low-drive tail, not the transition.</p><h2 id="Numerical-reliability:-why-the-boundary-tail-is-not-enough"><a class="docs-heading-anchor" href="#Numerical-reliability:-why-the-boundary-tail-is-not-enough">Numerical reliability: why the boundary tail is not enough</a><a id="Numerical-reliability:-why-the-boundary-tail-is-not-enough-1"></a><a class="docs-heading-anchor-permalink" href="#Numerical-reliability:-why-the-boundary-tail-is-not-enough" title="Permalink"></a></h2><p>The conventional truncation diagnostic is the boundary population <span>$p_{N-1} + p_N$</span> of the cavity Fock distribution. In the coexistence region it is actively misleading: the truncated ladder simply cannot host the bright state, so the solver locks onto the dim branch, converges beautifully, and leaves <em>no</em> trace in the boundary population.</p><p>The honest check is <strong>cross-cutoff agreement of the cumulants</strong>. Recomputing one point on a ladder of cutoffs:</p><pre><code class="language-julia hljs">function jc_cutoff_convergence(Δ, x, cutoffs; g, κ = 1.0)
+    rel(new, old) = old === nothing ? NaN : abs(new / old - 1)
+    prev = nothing
+    println(&quot;    N            c₁            c₂            c₃   Δc₁/c₁   Δc₂/c₂   Δc₃/c₃  p_{N-1}+p_N&quot;)
+    for N in cutoffs
+        ops = jc_operators(N)
+        H   = jc_hamiltonian(ops, Δ, g, x * g / 2)
+        L   = liouvillian(H, [sqrt(κ) * ops.a])
+        sys = trace_constrained_system(L)
+
+        ss = trace_constrained_steadystate(sys;
+            method = :iterative, τ = 1e-1, shift_factor = 1e-6,
+            rtol = 1e-10, atol = 1e-14, itmax = 300, memory = 60)
+        ρ = QuantumObject(ss.rho_ss; type = Operator, dims = L.dimensions)
+
+        c = fcscumulants_recursive(LindbladFCS(
+            L = SparseMatrixCSC{ComplexF64,Int}(sys.L),
+            mJ = [sqrt(κ) * ops.a], rho_ss = ρ, nu = [1.0], nC = 3,
+            method = :iterative, Pl = ss.Pl,
+            rtol = 1e-8, itmax = 300, memory = 60))
+
+        pn = max.(real.(diag(ptrace(ρ, 1).data)), 0.0);  pn ./= sum(pn)
+
+        @printf(&quot;%5d %13.8g %13.8g %13.8g %8.1e %8.1e %8.1e %12.2e\n&quot;,
+                N, c[1], c[2], c[3],
+                rel(c[1], prev === nothing ? nothing : prev[1]),
+                rel(c[2], prev === nothing ? nothing : prev[2]),
+                rel(c[3], prev === nothing ? nothing : prev[3]),
+                sum(pn[end-1:end]))
+        prev = c
+    end
+end
+
+jc_cutoff_convergence(0.55, 0.60, (100, 150, 200, 250); g = g, κ = κ)</code></pre><pre><code class="language-julia hljs">    N            c₁            c₂            c₃   Δc₁/c₁   Δc₂/c₂   Δc₃/c₃  p_{N-1}+p_N
+  100    0.10854147     2.4960861     181.03752      NaN      NaN      NaN     0.00e+00
+  150    0.10854147     2.4960907     181.04067  6.0e-08  1.8e-06  1.7e-05     0.00e+00
+  200    0.10854148     2.4960932     181.04257  3.5e-08  1.0e-06  1.1e-05     1.11e-44
+  250    0.10854147     2.4960911     181.04105  2.8e-08  8.4e-07  8.4e-06     0.00e+00</code></pre><p>Two things to read off this table.</p><p>First, the cumulants converge at very different rates. One cutoff step moves <span>$c_1$</span> by <span>$\sim\!10^{-8}$</span>, <span>$c_2$</span> by <span>$\sim\!10^{-6}$</span>, and <span>$c_3$</span> by <span>$\sim\!10^{-5}$</span> — roughly two orders of magnitude between the first and third cumulant. That ordering is why the scheduler buys headroom aimed at <span>$c_3$</span>: a cutoff that has clearly converged the count rate has <em>not</em> necessarily converged the skewness.</p><p>Second — and this is the point — the boundary tail is at (or numerically indistinguishable from) zero for every cutoff in the table, while <span>$c_3$</span> is still moving. The conventional diagnostic reports &quot;fully converged&quot; throughout. Trusting it would mean stopping at the smallest cutoff and quietly carrying a <span>$10^{-5}$</span> bias in the skewness.</p><h2 id="The-manuscript-figure"><a class="docs-heading-anchor" href="#The-manuscript-figure">The manuscript figure</a><a id="The-manuscript-figure-1"></a><a class="docs-heading-anchor-permalink" href="#The-manuscript-figure" title="Permalink"></a></h2><p><img src="../../assets/jc_fcs_g14.png" alt="Driven-dissipative Jaynes–Cummings full counting statistics at g/κ = 14"/></p><p>The published figure runs the sweep above over a graded ~89-point drive grid on three detuning cuts <span>$\Delta/\kappa \in \{0, 0.55, 0.70\}$</span>, with cutoffs climbing to <span>$N = 500$</span> — about an hour, and several GB of memory at the deepest points. It shows:</p><ul><li><strong>(a–c)</strong> the cavity Fock distributions <span>$P_n$</span> at three drives per cut; the dim/bright bimodality is directly visible on the detuned cuts;</li><li><strong>(d–f)</strong> the count rate <span>$c_1/\kappa$</span>, the Fano factor <span>$\mathcal{F}$</span>, and the skewness <span>$\mathcal{G}$</span>;</li><li><strong>(g–i)</strong> the reliability diagnostics recorded per point during the sweep: the cutoff actually used, the truncation tail <span>$p_{N-1}+p_N$</span> against <span>$\varepsilon_{\text{trunc}}$</span>, and the occupation <span>$\langle a^\dagger a\rangle / N$</span>.</li></ul><p>The full production pipeline — the detuned semiclassical root-finding, the per-cut <code>pad_sigma</code>, the per-point retry on a failed acceptance gate, and the figure routines — lives in the companion repository <a href="https://github.com/marcelojbp/QuantumFCS-Notebooks">QuantumFCS-Notebooks</a>.</p><h2 id="See-also"><a class="docs-heading-anchor" href="#See-also">See also</a><a id="See-also-1"></a><a class="docs-heading-anchor-permalink" href="#See-also" title="Permalink"></a></h2><ul><li><a href="../circuit_qed_heat_engine/#qhe-example">Circuit-QED quantum heat engine</a> — the same iterative machinery with <em>several</em> monitored currents sharing one prepared solver.</li><li><a href="../../solvers/#solvers">Drazin solvers</a> — the backends, their knobs, and the preconditioner-reuse rules used here.</li></ul></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Overview</a><a class="docs-footer-nextpage" href="../circuit_qed_heat_engine/">Circuit-QED heat engine »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 24 July 2026 08:10">Friday 24 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

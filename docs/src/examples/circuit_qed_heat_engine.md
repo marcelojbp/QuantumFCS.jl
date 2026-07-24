@@ -47,7 +47,7 @@ the entropy production, and the thermodynamic-uncertainty-relation (TUR) product
     [Reusing a prepared solver across observables](@ref prepared-context).
 
 This page is a self-contained condensation of the companion notebook
-[`circuit_qed_heat_engine.ipynb`](https://github.com/marcelojbp/QuantumFCS-Notebooks),
+[`circuit_qed_heat_engine.ipynb`](https://github.com/aarondanielphysics/QuantumFCS-Notebooks),
 which reproduces Figs. 3 and 4 of the manuscript.
 
 ## Setup and parameters
@@ -560,7 +560,7 @@ near-reversible operation with small currents. It needs much larger cutoffs
 (``N_{\max,h} = 20``, ``N_{\max,c} = 25``, a 546-dimensional Hilbert space), which
 is where the iterative backend starts to matter for this model too. Both regimes,
 the figure routines, and the checked-in sweep data live in the companion
-repository [QuantumFCS-Notebooks](https://github.com/marcelojbp/QuantumFCS-Notebooks).
+repository [QuantumFCS-Notebooks](https://github.com/aarondanielphysics/QuantumFCS-Notebooks).
 
 ## See also
 

@@ -72,6 +72,15 @@ params = (
 These are the operating parameters of the **large-affinity** regime, where the
 engine turns out to be antibunched.
 
+!!! note "QuantumToolbox version"
+    The results on this page were produced with QuantumToolbox 0.28. Nothing in
+    `QuantumFCS` depends on that version — the package only reads `.data` off
+    whatever operators you pass — but `QuantumToolbox`'s own
+    `QuantumObject(...; type = Operator, dims = ...)` constructor changed in later
+    0.4x releases, where `Operator` became a type rather than a singleton value. On
+    a newer QuantumToolbox, construct the operators and states with that release's
+    spelling; everything else on this page is unchanged.
+
 ## Building the model
 
 The Laguerre operators are diagonal in the Fock basis, with matrix elements

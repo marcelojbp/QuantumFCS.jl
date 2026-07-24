@@ -56,6 +56,16 @@ using Krylov, IncompleteLU          # enables the iterative backend
 using SparseArrays, LinearAlgebra, Printf
 ```
 
+!!! note "QuantumToolbox version"
+    The results on this page were produced with QuantumToolbox 0.28. Nothing in
+    `QuantumFCS` depends on that version — the package only reads `.data` off
+    whatever operators you pass — but `QuantumToolbox`'s own
+    `QuantumObject(...; type = Operator, dims = ...)` constructor changed in later
+    0.4x releases (`Operator` became a type rather than a singleton value, and a
+    super-operator's `.dimensions` now reports Liouville-space dimensions). On a
+    newer QuantumToolbox, construct the state with that release's spelling and pass
+    the Hilbert-space factor sizes — here `(N + 1, 2)` — instead of `L.dimensions`.
+
 The operators are built once for a given Fock cutoff `N`. The two Hamiltonian
 pieces that a sweep rescales — the Jaynes–Cummings coupling and the drive — are
 returned separately, so a sweep can rebuild `H` cheaply while the operators stay

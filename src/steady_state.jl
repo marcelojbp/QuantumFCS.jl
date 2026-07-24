@@ -32,7 +32,11 @@ result. Build one with [`trace_constrained_system`](@ref).
 * `A`: the trace-constrained system matrix `L + trace_constraint`.
 * `b`: the right-hand side (`w` in the first entry, zeros elsewhere).
 * `vId`: the vectorized identity / trace functional (diagonal indices).
-* `dimensions`: backend Hilbert-space dimensions when available, else `nothing`.
+* `dimensions`: Hilbert-space dimensions, for rewrapping `rho_ss` as a backend
+  operator. Reserved: no backend currently populates it, so it is `nothing` unless
+  you pass `dimensions` to [`trace_constrained_system`](@ref) yourself. (A backend
+  override is not portable — a `QuantumToolbox` super-operator reports
+  *Liouville*-space dimensions, not the Hilbert-space ones needed here.)
 """
 struct TraceConstrainedSystem{TL, TA, Tb, TV, TD}
     L::TL
@@ -74,8 +78,8 @@ end
 _backend_dimensions(::Any) = nothing
 
 """
-    trace_constrained_system(L; weight = nothing) -> TraceConstrainedSystem
-    trace_constrained_system(H, J; weight = nothing) -> TraceConstrainedSystem
+    trace_constrained_system(L; weight = nothing, dimensions = nothing) -> TraceConstrainedSystem
+    trace_constrained_system(H, J; weight = nothing, dimensions = nothing) -> TraceConstrainedSystem
 
 Build the trace-constrained steady-state linear system for a Liouvillian.
 
@@ -87,8 +91,13 @@ are normalized to `SparseMatrixCSC{ComplexF64, Int}`.
 The default constraint `weight` is `norm(L, 1) / length(L)` (the entrywise 1-norm of
 `L` divided by its total number of entries), matching the application helpers; pass
 `weight` to override it.
+
+`dimensions` is carried through to the returned system's `dimensions` field for your
+own bookkeeping (e.g. the Hilbert-space factor sizes needed to rewrap `rho_ss` as a
+backend operator). It is not inferred from the inputs — see
+[`TraceConstrainedSystem`](@ref).
 """
-function trace_constrained_system(L; weight = nothing)
+function trace_constrained_system(L; weight = nothing, dimensions = _backend_dimensions(L))
     Ldata = SparseMatrixCSC{ComplexF64, Int}(_operator_data(L))
 
     l = size(Ldata, 1)
@@ -115,12 +124,12 @@ function trace_constrained_system(L; weight = nothing)
 
     vId = SparseVector{ComplexF64, Int}(l, diag_idx, fill(1.0 + 0.0im, n))
 
-    return TraceConstrainedSystem(Ldata, A, b, vId, _backend_dimensions(L))
+    return TraceConstrainedSystem(Ldata, A, b, vId, dimensions)
 end
 
-function trace_constrained_system(H, J; weight = nothing)
+function trace_constrained_system(H, J; weight = nothing, dimensions = _backend_dimensions(H))
     L = _build_liouvillian(H, J)
-    return trace_constrained_system(L; weight = weight)
+    return trace_constrained_system(L; weight = weight, dimensions = dimensions)
 end
 
 # --- Preconditioner: generic stub; the iterative extension provides the real one --

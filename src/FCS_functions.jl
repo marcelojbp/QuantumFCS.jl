@@ -65,12 +65,17 @@ Calculate n-th zero-frequency cumulant of full counting statistics using a recur
 # Arguments
 * `L`: Vectorized Liouvillian matrix (sparse or dense, ComplexF64)
 Alternatively, one can provide the Hamiltonian and jump operators instead of `L`
-* `H`: Hamiltonian operator (sparse or dense, Operator from QuantumOptics.jl)
-* `J`: Vector of jump operators (sparse or dense, Operator from QuantumOptics.jl)
-* `mJ`: Vector containing the monitored jump matrices (sparse operators in vectorized representation).
+* `H`: Hamiltonian operator (sparse or dense, or a backend operator —
+  `QuantumOptics.Operator` / `QuantumToolbox.QuantumObject`)
+* `J`: Vector of jump operators (same accepted types as `H`)
+* `mJ`: Vector of the monitored jump operators, as ordinary `n×n` matrices (or
+  backend operators) — **not** super-operators and not vectorized. They select
+  which jump channels are counted.
 * `nC`: Number of cumulants to be calculated.
 * `rho_ss`: Steady-state density matrix (sparse or dense, ComplexF64)
-* `nu`: Vector of length `length(mJ)` with weights for each jump.
+* `nu`: Vector of length `length(mJ)` with weights for each jump. The weights set
+  both the sign convention and the units of the current (`±1` for counts, charges
+  for electric currents, energy quanta for heat currents).
 
 # Keyword arguments
 * `method`: Drazin-solve backend, `:lu` (default) or `:iterative`.
@@ -489,8 +494,12 @@ end
 """
     drazin(L, vrho_ss, vId, IdL)
 
-Calculate the Drazin inverse of a Liouvillian defined by the Hamiltonian H and jump operators J.
- 
+Calculate the (projected) Drazin inverse of the Liouvillian `L`.
+
+When a backend extension is loaded, a convenience overload
+`drazin(H, J, vrho_ss, vId, IdL)` builds `L` from a Hamiltonian and jump operators
+first.
+
 # Arguments
 * `L` : Liouvillian matrix
 * `vrho_ss`: vectorised density matrix specifying the steady-state of the Liouvillian.

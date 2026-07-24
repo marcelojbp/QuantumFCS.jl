@@ -1,12 +1,11 @@
 name = "QuantumFCS"
 uuid = "f61df7d1-40df-4ff5-bdc9-ea200d60bc8f"
-authors = ["aarondanielphysics <aaron.daniel>", "marcelojbp <marcelobro.pera@gmail.com>"]
-version = "1.0.0"
+authors = ["Marcelo Janovitch <marcelobro.pera@gmail.com>", "Aaron Daniel"]
+version = "1.1.0"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 #optional dependencies
 [weakdeps]
@@ -21,8 +20,9 @@ QuantumFCSQuantumToolboxExt = ["QuantumToolbox"]    # loads if QuantumToolbox is
 QuantumFCSIterativeExt = ["Krylov", "IncompleteLU"] # iterative Drazin backend
 
 [compat]
-julia = "1.10, 1.11, 1.12"
-QuantumToolbox = "0.28"
+julia = "1.10"
+QuantumOptics = "1.2"
+QuantumToolbox = "0.28 - 0.47"
 Krylov = "0.10"          # iterative ext uses the GmresWorkspace / gmres! API (0.10+)
 IncompleteLU = "0.2"
 
